@@ -147,3 +147,121 @@ flowchart LR
 
 ## アルバム編集
 ![](../images/screen_edit.png)
+
+<details>
+<summary> JSON </summary>
+
+{
+  "ui_structure": {
+    "layout": {
+      "type": "main_window",
+      "orientation": "vertical",
+      "children": [
+        {
+          "id": "header_bar",
+          "type": "navigation_bar",
+          "orientation": "horizontal",
+          "items": [
+            {"id": "back_button", "label": "Back", "type": "button", "icon": "arrow_back"},
+            {"id": "page_title", "label": "アルバム編集", "type": "title"}
+          ]
+        },
+        {
+          "id": "top_bar",
+          "type": "toolbar",
+          "orientation": "horizontal",
+          "items": [
+            {
+              "id": "file_operations",
+              "type": "button_group",
+              "buttons": [
+                {"id": "download", "label": "Download"},
+                {"id": "save", "label": "Save"},
+                {"id": "add_page", "label": "Add Page"}
+              ]
+            },
+            {
+              "id": "image_operations",
+              "type": "button_group",
+              "buttons": [
+                {"id": "cut_images", "label": "Cut Images"}
+              ]
+            },
+            {
+              "id": "text_tools",
+              "type": "tool_group",
+              "items": [
+                {"id": "add_text_box", "label": "Add Text Box", "type": "button"},
+                {"id": "font_selector", "label": "Font", "type": "dropdown"},
+                {"id": "font_size_selector", "label": "Size", "type": "dropdown"},
+                {"id": "text_color_selector", "label": "Color", "type": "color_palette", "colors_ref": "color_palette"},
+                {"id": "bold_toggle", "label": "Bold", "type": "toggle_button"}
+              ]
+            },
+            {
+              "id": "drawing_tools",
+              "type": "tool_group",
+              "items": [
+                {"id": "pen_tool", "label": "Pen", "type": "button"},
+                {"id": "pen_thickness_selector", "label": "Thickness", "type": "selector"},
+                {"id": "pen_color_selector", "label": "Color", "type": "color_palette", "colors_ref": "color_palette"}
+              ]
+            },
+            {
+              "id": "selection_tool",
+              "type": "button_group",
+              "buttons": [
+                {"id": "select_object", "label": "Select Object"}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "main_area",
+          "type": "container",
+          "orientation": "horizontal",
+          "children": [
+            {
+              "id": "editing_canvas",
+              "type": "canvas",
+              "description": "Main area for content editing"
+            },
+            {
+              "id": "right_sidebar",
+              "type": "sidebar",
+              "children": [
+                {
+                  "id": "asset_tabs",
+                  "type": "tab_container",
+                  "tabs": [
+                    {"id": "pictures_tab", "label": "Pictures"},
+                    {"id": "stickers_tab", "label": "Stickers"}
+                  ]
+                },
+                {
+                  "id": "asset_content",
+                  "type": "content_area",
+                  "description": "Displays content based on selected tab (Pictures/Stickers)"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "definitions": {
+      "color_palette": [
+        {"name": "Black", "hex": "#000000"},
+        {"name": "Red", "hex": "#FF0000"},
+        {"name": "Orange", "hex": "#FFA500"},
+        {"name": "Green", "hex": "#008000"},
+        {"name": "Lime Green", "hex": "#32CD32"},
+        {"name": "Yellow", "hex": "#FFFF00"},
+        {"name": "Cyan/Sky Blue", "hex": "#00BFFF"},
+        {"name": "Blue", "hex": "#0000FF"},
+        {"name": "Purple", "hex": "#800080"}
+      ]
+    }
+  }
+}
+</details>
