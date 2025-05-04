@@ -19,6 +19,11 @@
     - フロントエンド
     - バックエンド
 - データベースサーバー：Azure database
+- ストレージ：Azure Blob Storage
+
+## 技術スタック
+- **フロントエンド:** TypeScript, React
+- **バックエンド:** Node.js (TypeScript), NestJS
 
 ## 機能要件
 
@@ -60,15 +65,15 @@
 |アルバム編集|オブジェクトを削除する|アルバムに貼ったオブジェクトを削除する．|
 
 ### 色
-- Black: #000000  
-- Red: #FF0000  
-- Orange: #FFA500  
-- Green: #008000  
-- Lime Green: #32CD32  
-- Yellow: #FFFF00  
-- Cyan/Sky Blue: #00BFFF  
-- Blue: #0000FF  
-- Purple: #800080  
+- Black: #000000
+- Red: #FF0000
+- Orange: #FFA500
+- Green: #008000
+- Lime Green: #32CD32
+- Yellow: #FFFF00
+- Cyan/Sky Blue: #00BFFF
+- Blue: #0000FF
+- Purple: #800080
 
 ### データベース
 - ユーザID・パスワード
