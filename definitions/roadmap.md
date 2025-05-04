@@ -3,65 +3,62 @@
 ## 概要
 
 本ロードマップは、「アルバムメーカー」アプリケーションの開発計画を示します。
-`definitions/requirements/system_requirements.md` および `definitions/architect/system_architecture.md` に基づき、開発フェーズ、主要タスク、優先順位、担当（ラベル）を定義します。
+`definitions/requirements/system_requirements.md` および `definitions/architect/` 配下の設計ドキュメントに基づき、開発フェーズ、主要タスク、優先順位、担当（ラベル）を定義します。
 
 ## フェーズ 1: 基盤構築とコア機能 (目標: MVPリリース)
 
 | タスク名                     | 説明                                                                 | 優先度 | 担当ラベル         | ステータス | 備考                                   |
 | :--------------------------- | :------------------------------------------------------------------- | :----- | :----------------- | :--------- | :------------------------------------- |
 | **環境構築**                 |                                                                      |        |                    |            |                                        |
-| プロジェクトセットアップ     | フロントエンド、バックエンドのリポジトリ作成、基本設定                 | 高     | backend-engineer   | 未着手     |                                        |
-| クラウド環境設定 (Azure)   | App Service, Database, Storage のプロビジョニングと設定              | 高     | backend-engineer   | 未着手     |                                        |
+| プロジェクトセットアップ     | フロントエンド、バックエンドのリポジトリ作成、基本設定                 | 高     | backend-engineer   | **進行中 (#1)** |                                        |
+| クラウド環境設定 (Azure)   | App Service, Database, Storage のプロビジョニングと設定              | 高     | backend-engineer   | **進行中 (#2)** |                                        |
+| **データベーススキーマ適用** | `database_schema.md` に基づきDBマイグレーションを実行                | 高     | backend-engineer   | 未着手     | **新規追加**                           |
 | CI/CD パイプライン構築       | GitHub Actions等を用いた自動ビルド、テスト、デプロイ環境の構築         | 中     | backend-engineer   | 未着手     |                                        |
 | **認証機能**                 |                                                                      |        |                    |            |                                        |
-| ユーザー登録 API 実装        | ユーザーID, パスワード登録 API                                         | 高     | backend-engineer   | 未着手     | パスワードハッシュ化必須                 |
-| ログイン API 実装            | ユーザー認証 API (JWT等のトークン発行)                               | 高     | backend-engineer   | 未着手     |                                        |
-| ユーザー登録画面 実装        | UIデザインに基づき画面実装、API連携                                  | 高     | frontend-engineer  | 未着手     |                                        |
-| ログイン画面 実装            | UIデザインに基づき画面実装、API連携                                  | 高     | frontend-engineer  | 未着手     |                                        |
+| ユーザー登録 API 実装        | ユーザーID, パスワード登録 API (`api_specification.md` 参照)         | 高     | backend-engineer   | **進行中 (#3)** | パスワードハッシュ化必須                 |
+| ログイン API 実装            | ユーザー認証 API (JWT等のトークン発行, `api_specification.md` 参照)  | 高     | backend-engineer   | **進行中 (#4)** |                                        |
+| ユーザー登録画面 実装        | UIデザインに基づき画面実装、API連携                                  | 高     | frontend-engineer  | **進行中 (#5)** |                                        |
+| ログイン画面 実装            | UIデザインに基づき画面実装、API連携                                  | 高     | frontend-engineer  | **進行中 (#6)** |                                        |
 | **アルバム管理機能 (コア)**  |                                                                      |        |                    |            |                                        |
-| アルバム作成 API 実装        | 新規アルバム作成 API                                                 | 高     | backend-engineer   | 未着手     |                                        |
-| アルバム一覧取得 API 実装    | ログインユーザーのアルバム一覧取得 API                               | 高     | backend-engineer   | 未着手     |                                        |
-| アルバム削除 API 実装        | アルバム削除 API                                                     | 高     | backend-engineer   | 未着手     |                                        |
+| アルバム作成 API 実装        | 新規アルバム作成 API (`api_specification.md` 参照)                   | 高     | backend-engineer   | 未着手     | 初期ページ作成含む                     |
+| アルバム一覧取得 API 実装    | ログインユーザーのアルバム一覧取得 API (`api_specification.md` 参照) | 高     | backend-engineer   | 未着手     |                                        |
+| アルバム削除 API 実装        | アルバム削除 API (`api_specification.md` 参照)                       | 高     | backend-engineer   | 未着手     | 関連データ削除含む                     |
 | アルバム一覧画面 実装        | UIデザインに基づき画面実装、API連携 (一覧表示、新規作成ボタン)         | 高     | frontend-engineer  | 未着手     |                                        |
 | **写真管理機能 (コア)**      |                                                                      |        |                    |            |                                        |
-| 写真アップロード API 実装    | 写真ファイルをストレージに保存し、DBに情報を登録する API             | 高     | backend-engineer   | 未着手     | ファイルサイズ制限、形式チェック考慮 |
-| 写真削除 API 実装            | ストレージとDBから写真情報を削除する API                             | 高     | backend-engineer   | 未着手     | アルバムとの関連も考慮                 |
+| 写真アップロード API 実装    | 写真ファイルをストレージに保存し、DBに情報を登録 (`api_specification.md` 参照) | 高     | backend-engineer   | 未着手     | ファイルサイズ制限、形式チェック考慮 |
+| 写真削除 API 実装            | ストレージとDBから写真情報を削除 (`api_specification.md` 参照)       | 高     | backend-engineer   | 未着手     | アルバムとの関連も考慮                 |
 | **アルバム編集機能 (基盤)**  |                                                                      |        |                    |            |                                        |
 | アルバム編集画面 基盤実装    | UIデザインに基づき編集画面の基本レイアウト、ツールバー、サイドバー実装 | 高     | frontend-engineer  | 未着手     |                                        |
-| ページ追加 API 実装          | アルバムにページを追加する API                                       | 高     | backend-engineer   | 未着手     |                                        |
+| ページ追加 API 実装          | アルバムにページを追加する API (`api_specification.md` 参照)         | 高     | backend-engineer   | 未着手     |                                        |
 | ページ追加 機能実装          | フロントエンドでのページ追加操作と API 連携                          | 高     | frontend-engineer  | 未着手     |                                        |
-| オブジェクト配置 API (写真)  | 写真オブジェクトをページに追加/更新/削除する API                     | 高     | backend-engineer   | 未着手     | 位置、サイズ、回転など                 |
-| 写真配置 機能実装            | ドラッグ＆ドロップでの写真配置、API連携                              | 高     | frontend-engineer  | 未着手     |                                        |
-| アルバム保存 API 実装        | 編集内容 (オブジェクト情報) を保存する API                           | 高     | backend-engineer   | 未着手     |                                        |
-| アルバム保存 機能実装        | 保存ボタン押下時の API 連携                                          | 高     | frontend-engineer  | 未着手     |                                        |
+| **オブジェクト追加/更新/削除 API 実装** | ページ上のオブジェクト操作 API (`api_specification.md` 参照) | 高     | backend-engineer   | 未着手     | **名称変更** (写真、ステッカー等共通) |
+| 写真配置 機能実装            | ドラッグ＆ドロップでの写真配置、API連携                              | 高     | frontend-engineer  | 未着手     | オブジェクトAPIを利用                  |
+| ~~アルバム保存 API 実装~~    | ~~編集内容 (オブジェクト情報) を保存する API~~                       | ~~高~~ | ~~backend-engineer~~ | ~~削除~~   | ~~オブジェクトAPIに統合~~              |
+| ~~アルバム保存 機能実装~~    | ~~保存ボタン押下時の API 連携~~                                      | ~~高~~ | ~~frontend-engineer~~| ~~削除~~   | ~~オブジェクトAPI利用に統合~~          |
 
 ## フェーズ 2: アルバム編集機能拡張
 
 | タスク名                     | 説明                                                                 | 優先度 | 担当ラベル         | ステータス | 備考                                   |
 | :--------------------------- | :------------------------------------------------------------------- | :----- | :----------------- | :--------- | :------------------------------------- |
 | **編集機能 (写真)**          |                                                                      |        |                    |            |                                        |
-| 写真切り取り API 実装        | 写真の切り取り情報保存 API                                           | 中     | backend-engineer   | 未着手     | 図形、フリーハンド                     |
+| 写真切り取り API 実装        | 写真の切り取り情報保存 (`api_specification.md` オブジェクト更新参照) | 中     | backend-engineer   | 未着手     | 図形、フリーハンド                     |
 | 写真切り取り 機能実装        | フロントエンドでの切り取り操作、API連携                              | 中     | frontend-engineer  | 未着手     |                                        |
 | **編集機能 (ステッカー)**    |                                                                      |        |                    |            |                                        |
-| ステッカー配置 API 実装      | ステッカーオブジェクトをページに追加/更新/削除する API                 | 中     | backend-engineer   | 未着手     |                                        |
-| ステッカー配置 機能実装      | サイドバーからのドラッグ＆ドロップ、API連携                          | 中     | frontend-engineer  | 未着手     | ステッカー素材準備 (uxui-designer)   |
+| ステッカー配置 機能実装      | サイドバーからのドラッグ＆ドロップ、オブジェクトAPI連携              | 中     | frontend-engineer  | 未着手     | ステッカー素材準備 (uxui-designer)   |
 | **編集機能 (テキスト)**      |                                                                      |        |                    |            |                                        |
-| テキスト追加/編集 API 実装   | テキストオブジェクトを追加/更新/削除する API                         | 中     | backend-engineer   | 未着手     | 内容、色、サイズ                       |
-| テキスト追加/編集 機能実装   | テキストボックス配置、入力、スタイル変更、API連携                    | 中     | frontend-engineer  | 未着手     |                                        |
+| テキスト追加/編集 機能実装   | テキストボックス配置、入力、スタイル変更、オブジェクトAPI連携        | 中     | frontend-engineer  | 未着手     |                                        |
 | **編集機能 (描画)**          |                                                                      |        |                    |            |                                        |
-| 描画データ保存 API 実装      | ペンでの描画データを保存する API                                     | 中     | backend-engineer   | 未着手     | パス、色、太さ                         |
-| 描画 機能実装                | キャンバスへの描画、ツール選択 (ペン、色、太さ)、API連携             | 中     | frontend-engineer  | 未着手     |                                        |
+| 描画 機能実装                | キャンバスへの描画、ツール選択 (ペン、色、太さ)、オブジェクトAPI連携 | 中     | frontend-engineer  | 未着手     |                                        |
 | **編集機能 (共通操作)**      |                                                                      |        |                    |            |                                        |
-| オブジェクト共通操作 API 実装 | 移動、サイズ変更、回転、削除 API (既存APIの拡張・統合も検討)         | 高     | backend-engineer   | 未着手     |                                        |
-| オブジェクト共通操作 機能実装 | 選択、移動、リサイズ、回転、削除ハンドル、API連携                    | 高     | frontend-engineer  | 未着手     |                                        |
+| オブジェクト共通操作 機能実装 | 選択、移動、リサイズ、回転、削除ハンドル、オブジェクトAPI連携        | 高     | frontend-engineer  | 未着手     |                                        |
 
 ## フェーズ 3: 付加機能と品質向上
 
 | タスク名                     | 説明                                                                 | 優先度 | 担当ラベル         | ステータス | 備考                                   |
 | :--------------------------- | :------------------------------------------------------------------- | :----- | :----------------- | :--------- | :------------------------------------- |
-| アルバムダウンロード機能     | アルバムをPDF形式で生成・ダウンロードする機能 (API + Frontend)       | 中     | backend-engineer   | 未着手     | レイアウト再現性考慮                   |
-| ユーザー情報更新機能         | パスワード変更機能 (API + Frontend)                                  | 低     | backend-engineer   | 未着手     |                                        |
-| ユーザー削除機能             | ユーザーアカウント削除機能 (API + Frontend)                          | 低     | backend-engineer   | 未着手     | 関連データ削除要確認                   |
+| アルバムダウンロード機能     | アルバムをPDF形式で生成・ダウンロード (`api_specification.md` 参照)  | 中     | backend-engineer   | 未着手     | レイアウト再現性考慮                   |
+| ユーザー情報更新機能         | パスワード変更機能 (`api_specification.md` 参照)                     | 低     | backend-engineer   | 未着手     | フロントエンド実装も必要               |
+| ユーザー削除機能             | ユーザーアカウント削除機能 (`api_specification.md` 参照)             | 低     | backend-engineer   | 未着手     | フロントエンド実装も必要、関連データ削除要確認 |
 | テストコード実装             | 単体テスト、結合テスト、E2Eテスト                                    | 高     | frontend-engineer  | 未着手     | QAエンジニアと連携                     |
 | パフォーマンステスト         | 負荷テスト、応答速度測定                                             | 中     | backend-engineer   | 未着手     |                                        |
 | セキュリティテスト           | 脆弱性診断                                                           | 中     | backend-engineer   | 未着手     |                                        |
