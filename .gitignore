@@ -1,1 +1,3 @@
 .roo
+# Node dependencies
+backend/node_modules/
