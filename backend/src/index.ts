@@ -2,6 +2,7 @@ import 'dotenv/config'; // Load environment variables
 import express, { Request, Response } from 'express';
 import cors from 'cors'; // Import cors
 import authRouter from './routes/auth'; // Import the auth router
+import albumsRouter from './routes/albums'; // Import the albums router
 import AppDataSource from '../data-source'; // Add the missing import
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 
 // Mount the auth router
 app.use('/auth', authRouter);
+app.use('/albums', albumsRouter); // Mount the albums router
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello World!');
