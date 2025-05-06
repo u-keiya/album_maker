@@ -24,6 +24,7 @@
 ## 技術スタック
 - **フロントエンド:** TypeScript, React
 - **バックエンド:** Node.js (TypeScript), NestJS
+- **ランタイム:** Node.js 22 LTS (Azure App Service 上)
 
 ## 機能要件
 
