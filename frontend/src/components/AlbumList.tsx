@@ -23,7 +23,9 @@ const AlbumList: React.FC = () => {
           navigate('/login');
           return;
         }
-        const response = await axios.get<Album[]>('/api/albums', { // Album[]型を指定
+        // Use absolute URL to backend assuming it runs on port 3000
+        const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+        const response = await axios.get<Album[]>(`${backendUrl}/albums`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setAlbums(response.data);
