@@ -1,6 +1,7 @@
 import 'dotenv/config'; // Load environment variables
 import express, { Request, Response } from 'express';
 import authRouter from './routes/auth'; // Import the auth router
+import AppDataSource from '../data-source'; // Add the missing import
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,6 +16,14 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Hello World!');
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Initialize DataSource before starting the server
+AppDataSource.initialize()
+  .then(() => {
+    console.log("Data Source has been initialized!");
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
+  })
+  .catch((err: any) => { // Add type 'any' to the catch parameter
+    console.error("Error during Data Source initialization:", err);
+  });
