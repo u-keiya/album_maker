@@ -23,9 +23,8 @@ const AlbumList: React.FC = () => {
           navigate('/login');
           return;
         }
-        // Use absolute URL to backend assuming it runs on port 3000
-        const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
-        const response = await axios.get<Album[]>(`${backendUrl}/albums`, {
+        // Use relative path with proxy setup
+        const response = await axios.get<Album[]>('/api/albums', {
           headers: { Authorization: `Bearer ${token}` },
         });
         setAlbums(response.data);
@@ -44,11 +43,30 @@ const AlbumList: React.FC = () => {
     navigate('/login');
   };
 
-  const handleCreateAlbum = () => {
-    // TODO: Navigate to album creation/edit screen
-    // For now, let's assume it's /albums/new or similar
-    // navigate('/albums/new');
-    console.log('Navigate to create new album');
+  const handleCreateAlbum = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+      // API仕様書に基づき、デフォルトタイトルでアルバム作成APIを呼び出す
+      const response = await axios.post<{ albumId: string, title: string, createdAt: string, updatedAt: string, pages: { pageId: string, pageNumber: number }[] }>(
+        '/api/albums',
+        { title: '新しいアルバム' }, // デフォルトタイトル
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      // 成功したら、新しく作成されたアルバムのページに遷移する
+      // APIレスポンスから albumId を取得
+      const newAlbumId = response.data.albumId;
+      // TODO: /albums/:albumId のルートを App.tsx に追加する必要がある
+      navigate(`/albums/${newAlbumId}`);
+    } catch (err) {
+      setError('アルバムの作成に失敗しました。');
+      console.error(err);
+    }
   };
 
   if (error) {
@@ -73,15 +91,16 @@ const AlbumList: React.FC = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {/* Add New Album Card */}
-        <div
-          className="border rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg"
+        <button
+          type="button"
+          className="border rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg bg-green-500 hover:bg-green-700 text-white font-bold"
           onClick={handleCreateAlbum}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span className="text-gray-600">新規作成</span>
-        </div>
+          <span>新規作成</span>
+        </button>
 
         {/* Album Items */}
         {albums.map((album) => (
