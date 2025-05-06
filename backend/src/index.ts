@@ -1,10 +1,14 @@
 import 'dotenv/config'; // Load environment variables
 import express, { Request, Response } from 'express';
+import cors from 'cors'; // Import cors
 import authRouter from './routes/auth'; // Import the auth router
 import AppDataSource from '../data-source'; // Add the missing import
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Enable CORS for all origins
+app.use(cors());
 
 // Middleware to parse JSON bodies
 app.use(express.json());
