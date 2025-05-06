@@ -15,3 +15,27 @@ input / output:
   Input: Request body { username: string, password: string }
   Output (Success): Response body { token: string, userId: string, username: string }, Status 200
   Output (Error): Response body { error: string, message: string, details?: any[] }, Status 400, 401, 500
+---
+file name: frontend/src/components/Register.tsx
+classname: Register (React Functional Component)
+function name: Register (React Functional Component)
+short description: ユーザー登録フォームとAPI連携機能を提供するコンポーネント
+input / output:
+    - input: なし (内部でユーザー名とパスワードの状態を管理)
+    - output: ユーザー登録フォームのUI要素。登録ボタンクリック時に `/auth/register` APIを呼び出す。
+---
+file name: frontend/src/components/Login.tsx
+classname: Login (React Functional Component)
+function name: Login (React Functional Component)
+short description: ログインフォームとAPI連携、ユーザー登録画面への遷移機能を提供するコンポーネント
+input / output:
+    - input: なし (内部でユーザー名とパスワードの状態を管理)
+    - output: ログインフォームのUI要素。ログインボタンクリック時に `/auth/login` APIを呼び出す。登録ボタンクリック時に `/register` へ遷移する。
+---
+file name: frontend/src/App.tsx
+classname: App (React Functional Component)
+function name: App (React Functional Component)
+short description: アプリケーションのメインコンポーネント。ルーティングを設定し、ログイン画面とユーザー登録画面を表示する。
+input / output:
+    - input: なし
+    - output: URLパスに応じた画面コンポーネント (Login or Register)
