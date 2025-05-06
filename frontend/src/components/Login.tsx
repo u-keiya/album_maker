@@ -33,11 +33,10 @@ const Login: React.FC = () => {
 
       const data = await response.json();
       console.log('Login successful:', data); // 成功時のレスポンスをコンソールに出力
-      // TODO: トークンを保存し、ログイン状態に遷移する処理を追加 (例: アルバム一覧へ)
-      alert('Login successful!'); // 仮の成功通知
+      localStorage.setItem('token', data.token); // トークンをlocalStorageに保存
       setUsername('');
       setPassword('');
-      // navigate('/albums'); // 例: ログイン成功後にアルバム一覧へ遷移
+      navigate('/albums'); // ログイン成功後にアルバム一覧へ遷移
 
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
