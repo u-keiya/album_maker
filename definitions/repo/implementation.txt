@@ -1,0 +1,8 @@
+file name: backend/src/routes/auth.ts
+classname: (なし)
+function name: POST /auth/register handler (async function)
+short description: ユーザー名とパスワードを受け取り、ユーザーを新規登録し、JWTを返すAPIエンドポイント。
+input / output:
+  Input: Request body { username: string, password: string }
+  Output (Success): Response body { token: string, userId: string, username: string }, Status 201
+  Output (Error): Response body { error: string, message: string, details?: any[] }, Status 400, 409, 500
