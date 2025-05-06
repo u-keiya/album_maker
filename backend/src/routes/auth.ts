@@ -20,6 +20,12 @@ const registerValidationRules = [
     .withMessage('Password must be at least 8 characters long'),
 ];
 
+// --- Validation Rules for Login ---
+const loginValidationRules = [
+  body('username').notEmpty().withMessage('Username is required'),
+  body('password').notEmpty().withMessage('Password is required'),
+];
+
 // --- Error Handling Middleware for Validation ---
 const validate = (req: Request, res: Response, next: NextFunction): void => {
   const errors = validationResult(req);
@@ -106,6 +112,67 @@ router.post('/register', registerValidationRules, validate, async (req: Request,
 });
 
 
-// TODO: Implement login route (POST /login)
+// --- Login Route (POST /login) ---
+router.post('/login', loginValidationRules, validate, async (req: Request, res: Response): Promise<void> => {
+  const { username, password } = req.body;
+
+  try {
+    // 1. Find user by username
+    const user = await userRepository.findOneBy({ username });
+    if (!user) {
+      res.status(401).json({
+        error: 'AuthenticationFailed',
+        message: 'Invalid username or password.',
+      });
+      return;
+    }
+
+    // 2. Compare provided password with stored hash
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      res.status(401).json({
+        error: 'AuthenticationFailed',
+        message: 'Invalid username or password.',
+      });
+      return;
+    }
+
+    // 3. Generate JWT (similar to registration)
+    const jwtSecret = process.env.JWT_SECRET;
+    const jwtExpiresInString = process.env.JWT_EXPIRES_IN || '3600s';
+    const expiresInSeconds = parseInt(jwtExpiresInString, 10);
+    const jwtExpiresInValue = !isNaN(expiresInSeconds) ? expiresInSeconds : 3600;
+
+    if (!jwtSecret) {
+      console.error('JWT_SECRET is not defined in environment variables.');
+      res.status(500).json({
+        error: 'ServerError',
+        message: 'Server configuration error.',
+      });
+      return;
+    }
+
+    const tokenPayload = {
+      userId: user.user_id,
+      username: user.username,
+    };
+
+    const token = jwt.sign(tokenPayload, jwtSecret, { expiresIn: jwtExpiresInValue });
+
+    // 4. Return success response with token and user info
+    res.status(200).json({
+      token,
+      userId: user.user_id,
+      username: user.username,
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      error: 'ServerError',
+      message: 'An internal server error occurred during login.',
+    });
+  }
+});
 
 export default router;
