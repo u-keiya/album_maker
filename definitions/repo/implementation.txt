@@ -39,3 +39,21 @@ short description: アプリケーションのメインコンポーネント。�
 input / output:
     - input: なし
     - output: URLパスに応じた画面コンポーネント (Login or Register)
+---
+file name: backend/src/routes/albums.ts
+function name: POST /
+short description: Creates a new album with an initial page for the authenticated user.
+input / output:
+  Input: { "title": "string (optional, max 100)" } (in request body)
+  Output (Success 201): { "albumId": "string (uuid)", "title": "string", "createdAt": "string (date-time)", "updatedAt": "string (date-time)", "pages": [{ "pageId": "string (uuid)", "pageNumber": 1 }] }
+  Output (Error 400/401/404/500): { "error": "string", "message": "string" }
+---
+---
+file name: backend/src/routes/albums.ts
+function name: GET /
+short description: Retrieves a list of albums owned by the authenticated user.
+input / output:
+  Input: None (JWT token in header)
+  Output (Success 200): [ { "albumId": "string (uuid)", "title": "string", "createdAt": "string (date-time)", "updatedAt": "string (date-time)" } ]
+  Output (Error 401/500): { "error": "string", "message": "string" }
+---
