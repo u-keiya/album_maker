@@ -23,7 +23,7 @@ const AlbumList: React.FC = () => {
           navigate('/login');
           return;
         }
-        const response = await axios.get('/api/albums', {
+        const response = await axios.get<Album[]>('/api/albums', { // Album[]型を指定
           headers: { Authorization: `Bearer ${token}` },
         });
         setAlbums(response.data);
