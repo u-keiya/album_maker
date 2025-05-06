@@ -10,20 +10,20 @@
 | タスク名                     | 説明                                                                 | 優先度 | 担当ラベル         | ステータス | 備考                                   |
 | :--------------------------- | :------------------------------------------------------------------- | :----- | :----------------- | :--------- | :------------------------------------- |
 | **環境構築**                 |                                                                      |        |                    |            |                                        |
-| プロジェクトセットアップ     | フロントエンド、バックエンドのリポジトリ作成、基本設定                 | 高     | backend-engineer   | **進行中 (#1)** |                                        |
-| クラウド環境設定 (Azure)   | App Service, Database, Storage のプロビジョニングと設定              | 高     | backend-engineer   | **進行中 (#2)** |                                        |
-| **データベーススキーマ適用** | `database_schema.md` に基づきDBマイグレーションを実行                | 高     | backend-engineer   | 未着手     | **新規追加**                           |
+| プロジェクトセットアップ     | フロントエンド、バックエンドのリポジトリ作成、基本設定                 | 高     | backend-engineer   | **完了 (#1)**   |                                        |
+| クラウド環境設定 (Azure)   | App Service, Database, Storage のプロビジョニングと設定              | 高     | backend-engineer   | **完了 (#2)**   |                                        |
+| **データベーススキーマ適用** | `database_schema.md` に基づきDBマイグレーションを実行                | 高     | backend-engineer   | **完了 (#7)**   |                                        |
 | CI/CD パイプライン構築       | GitHub Actions等を用いた自動ビルド、テスト、デプロイ環境の構築         | 中     | backend-engineer   | 未着手     |                                        |
 | **認証機能**                 |                                                                      |        |                    |            |                                        |
-| ユーザー登録 API 実装        | ユーザーID, パスワード登録 API (`api_specification.md` 参照)         | 高     | backend-engineer   | **進行中 (#3)** | パスワードハッシュ化必須                 |
-| ログイン API 実装            | ユーザー認証 API (JWT等のトークン発行, `api_specification.md` 参照)  | 高     | backend-engineer   | **進行中 (#4)** |                                        |
-| ユーザー登録画面 実装        | UIデザインに基づき画面実装、API連携                                  | 高     | frontend-engineer  | **進行中 (#5)** |                                        |
-| ログイン画面 実装            | UIデザインに基づき画面実装、API連携                                  | 高     | frontend-engineer  | **進行中 (#6)** |                                        |
+| ユーザー登録 API 実装        | ユーザーID, パスワード登録 API (`api_specification.md` 参照)         | 高     | backend-engineer   | **完了 (#3)**   | パスワードハッシュ化必須                 |
+| ログイン API 実装            | ユーザー認証 API (JWT等のトークン発行, `api_specification.md` 参照)  | 高     | backend-engineer   | **完了 (#4)**   |                                        |
+| ユーザー登録画面 実装        | UIデザインに基づき画面実装、API連携                                  | 高     | frontend-engineer  | **完了 (#5)**   |                                        |
+| ログイン画面 実装            | UIデザインに基づき画面実装、API連携                                  | 高     | frontend-engineer  | **完了 (#6)**   |                                        |
 | **アルバム管理機能 (コア)**  |                                                                      |        |                    |            |                                        |
-| アルバム作成 API 実装        | 新規アルバム作成 API (`api_specification.md` 参照)                   | 高     | backend-engineer   | 未着手     | 初期ページ作成含む                     |
-| アルバム一覧取得 API 実装    | ログインユーザーのアルバム一覧取得 API (`api_specification.md` 参照) | 高     | backend-engineer   | 未着手     |                                        |
-| アルバム削除 API 実装        | アルバム削除 API (`api_specification.md` 参照)                       | 高     | backend-engineer   | 未着手     | 関連データ削除含む                     |
-| アルバム一覧画面 実装        | UIデザインに基づき画面実装、API連携 (一覧表示、新規作成ボタン)         | 高     | frontend-engineer  | 未着手     |                                        |
+| アルバム作成 API 実装        | 新規アルバム作成 API (`api_specification.md` 参照)                   | 高     | backend-engineer   | **完了 (#8)**   | 初期ページ作成含む                     |
+| アルバム一覧取得 API 実装    | ログインユーザーのアルバム一覧取得 API (`api_specification.md` 参照) | 高     | backend-engineer   | **完了 (#9)**   |                                        |
+| アルバム削除 API 実装        | アルバム削除 API (`api_specification.md` 参照)                       | 高     | backend-engineer   | **完了 (#10)**  | 関連データ削除含む                     |
+| アルバム一覧画面 実装        | UIデザインに基づき画面実装、API連携 (一覧表示、新規作成ボタン)         | 高     | frontend-engineer  | **完了 (#11)**  |                                        |
 | **写真管理機能 (コア)**      |                                                                      |        |                    |            |                                        |
 | 写真アップロード API 実装    | 写真ファイルをストレージに保存し、DBに情報を登録 (`api_specification.md` 参照) | 高     | backend-engineer   | 未着手     | ファイルサイズ制限、形式チェック考慮 |
 | 写真削除 API 実装            | ストレージとDBから写真情報を削除 (`api_specification.md` 参照)       | 高     | backend-engineer   | 未着手     | アルバムとの関連も考慮                 |
