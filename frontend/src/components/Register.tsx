@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // useNavigateをインポート
 
 const Register: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); // useNavigateフックを使用
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -28,9 +30,10 @@ const Register: React.FC = () => {
       const data = await response.json();
       console.log('Registration successful:', data); // 成功時のレスポンスをコンソールに出力
       // TODO: トークンを保存し、ログイン状態に遷移する処理を追加
-      alert('Registration successful!'); // 仮の成功通知
+      alert('Registration successful! Redirecting to login...'); // 仮の成功通知
       setUsername('');
       setPassword('');
+      navigate('/login'); // 登録成功後、ログインページへ遷移
 
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -38,6 +41,10 @@ const Register: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoginClick = () => {
+    navigate('/login'); // /loginパスに遷移
   };
 
   return (
@@ -72,6 +79,13 @@ const Register: React.FC = () => {
           {loading ? 'Registering...' : 'Register'}
         </button>
       </form>
+      <button
+        type="button"
+        style={{ marginTop: '10px' }}
+        onClick={handleLoginClick} // onClickイベントハンドラを追加
+      >
+        ログインはこちら
+      </button>
     </div>
   );
 };
