@@ -104,5 +104,45 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
         return res.status(500).json({ error: 'ServerError', message: 'Failed to fetch albums.' });
     }
 });
+// DELETE /albums/:albumId - Delete an album
+router.delete('/:albumId', authenticateToken, async (req: Request, res: Response) => {
+    const { albumId } = req.params;
+    const userId = req.user?.id; // Get user ID from authenticated request
+
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found.' });
+    }
+
+    const albumRepository = AppDataSource.getRepository(Album);
+
+    try {
+        // Find the album first to check ownership
+        const album = await albumRepository.findOne({
+            where: { album_id: albumId },
+            // Optionally load the user relation if needed, but user_id is directly available
+            // relations: ['user'],
+        });
+
+        // Check if album exists
+        if (!album) {
+            return res.status(404).json({ error: 'NotFound', message: 'Album not found.' });
+        }
+
+        // Check if the authenticated user owns the album
+        if (album.user_id !== userId) {
+            return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to delete this album.' });
+        }
+
+        // Delete the album (cascading should handle related entities like pages/objects)
+        await albumRepository.remove(album);
+
+        // Send success response
+        return res.status(204).send(); // No Content
+
+    } catch (error) {
+        console.error('Error deleting album:', error);
+        return res.status(500).json({ error: 'ServerError', message: 'Failed to delete album.' });
+    }
+});
 
 export default router;
