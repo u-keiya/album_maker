@@ -71,5 +71,38 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
         return res.status(500).json({ error: 'ServerError', message: 'Failed to create album.' });
     }
 });
+// GET /albums - Get all albums for the logged-in user
+router.get('/', authenticateToken, async (req: Request, res: Response) => {
+    const userId = req.user?.id; // Get user ID from authenticated request
+
+    if (!userId) {
+        // This should technically not happen if authenticateToken works correctly
+        return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found.' });
+    }
+
+    const albumRepository = AppDataSource.getRepository(Album);
+
+    try {
+        const albums = await albumRepository.find({
+            where: { user_id: userId },
+            order: { created_at: 'DESC' }, // Optional: order by creation date
+        });
+
+        // Format the response according to the API specification
+        const responseData = albums.map(album => ({
+            albumId: album.album_id,
+            title: album.title,
+            // thumbnailUrl: album.thumbnailUrl, // Add if thumbnail logic is implemented
+            createdAt: album.created_at,
+            updatedAt: album.updated_at,
+        }));
+
+        return res.status(200).json(responseData);
+
+    } catch (error) {
+        console.error('Error fetching albums:', error);
+        return res.status(500).json({ error: 'ServerError', message: 'Failed to fetch albums.' });
+    }
+});
 
 export default router;
