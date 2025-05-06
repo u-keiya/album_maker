@@ -1,12 +1,20 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'; // react-router-domをインポート
 import './App.css';
-import Register from './components/Register'; // Registerコンポーネントをインポート
+import Login from './components/Login';
+import Register from './components/Register';
 
 function App() {
   return (
-    <div className="App">
-      <Register /> {/* Registerコンポーネントを表示 */}
-    </div>
+    <Router> {/* BrowserRouterでラップ */}
+      <div className="App">
+        <Routes> {/* Routesでルート定義をラップ */}
+          <Route path="/login" element={<Login />} /> {/* /login パス */}
+          <Route path="/register" element={<Register />} /> {/* /register パス */}
+          <Route path="/" element={<Login />} /> {/* デフォルトパスはLoginを表示 */}
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
