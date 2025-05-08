@@ -10,7 +10,6 @@ import { EntityManager } from 'typeorm';
 const router: Router = express.Router();
 
 // POST /albums - Create a new album
-// @ts-ignore // Ignore TS2769 error for this line
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
     const { title } = req.body;
     const userId = req.user?.userId; // Corrected property name from token payload
@@ -74,7 +73,6 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     }
 });
 // GET /albums - Get all albums for the logged-in user
-// @ts-ignore // Ignore TS2769 error for this line
 router.get('/', authenticateToken, async (req: Request, res: Response) => {
     const userId = req.user?.userId; // Corrected property name from token payload
 
@@ -108,7 +106,6 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
     }
 });
 // DELETE /albums/:albumId - Delete an album
-// @ts-ignore // Ignore TS2769 error for this line
 router.delete('/:albumId', authenticateToken, async (req: Request, res: Response) => {
     const { albumId } = req.params;
     const userId = req.user?.userId; // Corrected property name from token payload
