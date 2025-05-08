@@ -15,7 +15,8 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     const token = authHeader && authHeader.split(' ')[1];
 
     if (token == null) {
-        return res.status(401).json({ error: 'Unauthorized', message: 'Authentication token is missing.' });
+        res.status(401).json({ error: 'Unauthorized', message: 'Authentication token is missing.' });
+        return;
     }
 
     // Replace 'YOUR_SECRET_KEY' with your actual secret key
@@ -24,7 +25,8 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     jwt.verify(token, secret, (err: any, user: any) => {
         if (err) {
             console.error("JWT Verification Error:", err);
-            return res.status(403).json({ error: 'Forbidden', message: 'Invalid or expired token.' });
+            res.status(403).json({ error: 'Forbidden', message: 'Invalid or expired token.' });
+            return;
         }
         // Ensure the 'user' object from jwt.verify matches the expected structure
         // The 'user' object here is the decoded payload
@@ -33,7 +35,8 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
         } else {
              // Handle unexpected payload structure
              console.error("JWT payload structure mismatch:", user);
-             return res.status(403).json({ error: 'Forbidden', message: 'Invalid token payload.' });
+             res.status(403).json({ error: 'Forbidden', message: 'Invalid token payload.' });
+             return;
         }
         next(); // pass the execution off to whatever request the client intended
     });
