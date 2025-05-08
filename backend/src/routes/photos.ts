@@ -111,4 +111,67 @@ router.post('/', authenticateToken, upload.single('file'), async (req: Request, 
   }
 });
 
+/**
+ * @route   DELETE /photos/:photoId
+ * @desc    Delete a photo
+ * @access  Private (Requires JWT authentication)
+ */
+router.delete('/:photoId', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const photoId = req.params.photoId;
+    if (!photoId) {
+      res.status(400).json({ error: 'MissingParameter', message: 'Photo ID is required.' });
+      return;
+    }
+
+    if (!containerClient) {
+      console.error('Azure Blob Storage container client is not initialized.');
+      res.status(500).json({ error: 'StorageError', message: 'Could not connect to file storage.' });
+      return;
+    }
+
+    const photoRepository = AppDataSource.getRepository(Photo);
+
+    const userFromToken = req.user as { userId: string; username: string } | undefined;
+    if (!userFromToken || !userFromToken.userId) {
+      res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated or user ID missing.' });
+      return;
+    }
+    const userId = userFromToken.userId;
+
+    const photo = await photoRepository.findOneBy({ photo_id: photoId, user_id: userId });
+
+    if (!photo) {
+      res.status(404).json({ error: 'NotFound', message: 'Photo not found or user does not have permission to delete it.' });
+      return;
+    }
+
+    // Delete from Azure Blob Storage
+    // Extract blob name from file_path (URL)
+    const blobName = photo.file_path.substring(photo.file_path.lastIndexOf('/') + 1);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+    try {
+      await blockBlobClient.delete();
+    } catch (storageError: any) {
+      // Log storage error but proceed to delete DB record if storage blob was already deleted or not found
+      console.warn(`Failed to delete blob ${blobName} from Azure Storage. It might have been already deleted. Error: ${storageError.message}`);
+      // You might want to check for specific error codes from Azure to decide if to proceed
+      // For example, if error is 'BlobNotFound', it's safe to proceed.
+      if (storageError.statusCode !== 404) { // Example: re-throw if not a 'BlobNotFound' error
+          throw storageError; // Or handle more gracefully
+      }
+    }
+
+    // Delete from database
+    await photoRepository.remove(photo);
+
+    res.status(204).send(); // No content on successful deletion
+    return;
+
+  } catch (error: any) {
+    console.error('Error deleting photo:', error);
+    next(error);
+  }
+});
+
 export default router;
