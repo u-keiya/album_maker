@@ -133,7 +133,7 @@ const AlbumEdit: React.FC = () => {
       zIndex: albumObjects.length, // 重なり順を適当に設定
       contentData: {
         photoId: draggedPhoto.id,
-        // cropInfo: {} // 必要であれば切り抜き情報
+        cropInfo: {} // 空のcropInfoを追加
       },
     };
 
