@@ -6,3 +6,18 @@
           - **Input**: albumId (in path parameter), JWT token (in header)
           - **Output (Success 200)**: { albumId: string, title: string, createdAt: string, updatedAt: string, pages: [{ pageId: string, pageNumber: number, objects: [{ objectId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string }] }] }
           - **Output (Error 401/404/500)**: { error: string, message: string }
+### File: frontend/src/components/AlbumEdit.tsx
+
+  - **component name**: AlbumEdit
+      - **short description**: Component for editing an album. Fetches album details, allows adding pages, and placing objects (photos, stickers, text, drawings) onto pages.
+      - **input / output**:
+          - **Input (Props)**: None (albumId is retrieved from URL params)
+          - **Input (State)**: album (Album data including pages and objects), currentPageId, photos (for sidebar), draggedPhoto
+          - **Output (Render)**: Album editing interface with toolbar, canvas, and sidebar. Displays objects on the current page and allows interaction.
+      - **key changes for issue #45**:
+          - Fetches full album data (pages, objects) from `/api/albums/:albumId`.
+          - Manages `currentPageId` state to display different pages.
+          - Renders various object types (`photo`, `sticker`, `text`, `drawing`) on the canvas based on `albumObjects` state.
+          - Removed hardcoded `MOCK_CURRENT_PAGE_ID`.
+          - Updated `handleAddPage` to refresh album state and switch to the new page.
+          - Updated `handleDrop` to use `currentPageId` and refresh album/object state.
