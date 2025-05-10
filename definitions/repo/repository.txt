@@ -1,0 +1,533 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+================================================================
+File Summary
+================================================================
+
+Purpose:
+--------
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+File Format:
+------------
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+4. Multiple file entries, each consisting of:
+  a. A separator line (================)
+  b. The file path (File: path/to/file)
+  c. Another separator line
+  d. The full contents of the file
+  e. A blank line
+
+Usage Guidelines:
+-----------------
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+
+Notes:
+------
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+
+Additional Info:
+----------------
+
+================================================================
+Directory Structure
+================================================================
+.repomix/
+  bundles.json
+backend/
+  src/
+    entities/
+      Album.ts
+      AlbumObject.ts
+      AlbumPage.ts
+      Photo.ts
+      User.ts
+    middleware/
+      authMiddleware.ts
+    migrations/
+      1746517213608-ApplyDatabaseSchema.ts
+    routes/
+      albums.ts
+      auth.ts
+      photos.ts
+    index.ts
+  data-source.ts
+  package.json
+  tsconfig.json
+definitions/
+  architect/
+    api_specification.md
+    component_design.md
+    database_schema.md
+    sequence_diagrams.md
+    system_architecture.md
+    ui_design.md
+  repo/
+    implementation.txt
+  requirements/
+    business_requirements.md
+    system_requirements.md
+  roadmap.md
+frontend/
+  public/
+    index.html
+    manifest.json
+    robots.txt
+  src/
+    components/
+      AlbumEdit.css
+      AlbumEdit.tsx
+      AlbumList.tsx
+      Login.tsx
+      Register.tsx
+    App.css
+    App.test.tsx
+    App.tsx
+    index.css
+    index.tsx
+    logo.svg
+    react-app-env.d.ts
+    reportWebVitals.ts
+    setupProxy.js
+    setupTests.ts
+  .gitignore
+  package.json
+  README.md
+  tsconfig.json
+.gitignore
+ai_chat_log.md
+README.md
+schedule.txt
+
+================================================================
+Files
+================================================================
+
+Okay, I will rewrite the source code information from the provided file in the format you requested.
+
+## Source Code Description
+
+Here is the source code information for each file, formatted as requested:
+
+### File: backend/src/entities/Album.ts
+
+  - **classname**: Album
+      - **short description**: Represents an album entity in the database. It includes properties like album ID, user ID, title, and timestamps. It also defines relationships with User and AlbumPage entities. [cite: 16, 21]
+      - **input / output**: Not applicable for class definition.
+
+### File: backend/src/entities/AlbumObject.ts
+
+  - **classname**: AlbumObject
+      - **short description**: Represents an object (like a photo, sticker, text, or drawing) within an album page. It defines properties such as object ID, page ID, type, position, dimensions, rotation, z-index, content data, and timestamps. It also defines a relationship with the AlbumPage entity.
+      - **input / output**: Not applicable for class definition.
+
+### File: backend/src/entities/AlbumPage.ts
+
+  - **classname**: AlbumPage
+      - **short description**: Represents a page within an album. It includes properties like page ID, album ID, page number, and timestamps. It defines relationships with Album and AlbumObject entities and has a unique constraint on album ID and page number. [cite: 34]
+      - **input / output**: Not applicable for class definition.
+
+### File: backend/src/entities/Photo.ts
+
+  - **classname**: Photo
+      - **short description**: Represents a photo entity in the database. It includes properties like photo ID, user ID, file path, original filename, upload timestamp, file size, and MIME type. It also defines a relationship with the User entity. [cite: 40, 47]
+      - **input / output**: Not applicable for class definition.
+
+### File: backend/src/entities/User.ts
+
+  - **classname**: User
+      - **short description**: Represents a user entity in the database. It includes properties like user ID, username, password hash, and timestamps. It also defines relationships with Album and Photo entities. [cite: 48, 49, 55]
+      - **input / output**: Not applicable for class definition.
+
+### File: backend/src/migrations/1746517213608-ApplyDatabaseSchema.ts
+
+  - **classname**: ApplyDatabaseSchema1746517213608
+      - **short description**: This class implements the TypeORM MigrationInterface to apply and revert database schema changes. [cite: 56]
+      - **function name**: up
+          - **short description**: Executes the database migration to create tables (album\_objects, album\_pages, albums, photos, users) and their respective columns, constraints, and indexes. [cite: 56, 62, 63, 64, 65]
+          - **input / output**:
+              - **input**: queryRunner: QueryRunner
+              - **output**: Promise\<void\>
+      - **function name**: down
+          - **short description**: Reverts the database migration by dropping the tables and indexes created in the `up` method. [cite: 66, 67, 68, 69, 70]
+          - **input / output**:
+              - **input**: queryRunner: QueryRunner
+              - **output**: Promise\<void\>
+
+### File: backend/src/routes/auth.ts
+
+  - **classname**: (なし)
+  - **function name**: POST /auth/register handler (async function)
+      - **short description**: ユーザー名とパスワードを受け取り、ユーザーを新規登録し、JWTを返すAPIエンドポイント。 [cite: 845]
+      - **input / output**:
+          - **Input**: Request body { username: string, password: string } [cite: 845]
+          - **Output (Success)**: Response body { token: string, userId: string, username: string }, Status 201 [cite: 845]
+          - **Output (Error)**: Response body { error: string, message: string, details?: any[] }, Status 400, 409, 500 [cite: 845]
+  - **function name**: POST /auth/login handler (async function)
+      - **short description**: ユーザー名とパスワードを受け取り、認証を行い、成功した場合にJWTを返すAPIエンドポイント。 [cite: 846]
+      - **input / output**:
+          - **Input**: Request body { username: string, password: string } [cite: 846]
+          - **Output (Success)**: Response body { token: string, userId: string, username: string }, Status 200 [cite: 846]
+          - **Output (Error)**: Response body { error: string, message: string, details?: any[] }, Status 400, 401, 500 [cite: 846]
+  - **function name**: validate
+      - **short description**: Middleware to handle validation errors from express-validator. If validation errors exist, it sends a 400 response with error details. [cite: 347, 348]
+      - **input / output**:
+          - **input**: req: Request, res: Response, next: NextFunction
+          - **output**: void (sends response or calls next middleware)
+
+### File: backend/src/routes/photos.ts
+
+  - **classname**: (なし)
+  - **function name**: POST /photos handler (async function)
+      - **short description**: 新しい写真を認証済みユーザーとしてアップロードし、Azure Blob Storage に保存後、データベースに写真情報を記録するAPIエンドポイント。 [cite: 851]
+      - **input / output**:
+          - **Input**: FormData with 'file' (image file), JWT token (in header) [cite: 851]
+          - **Output (Success 201)**: { "photoId": "string (uuid)", "filePath": "string (url)", "originalFilename": "string", "uploadedAt": "string (date-time)", "fileSize": "number", "mimeType": "string" } [cite: 851]
+          - **Output (Error 400/401/404/500)**: { "error": "string", "message": "string", "details"?: string } [cite: 851]
+  - **function name**: DELETE /photos/:photoId handler (async function)
+      - **short description**: 指定された photoId の写真を認証済みユーザーとして Azure Blob Storage とデータベースから削除するAPIエンドポイント。 [cite: 852]
+      - **input / output**:
+          - **Input**: photoId (in path parameter), JWT token (in header) [cite: 852]
+          - **Output (Success 204)**: No Content [cite: 852]
+          - **Output (Error 400/401/404/500)**: { "error": "string", "message": "string", "details"?: string } [cite: 852]
+
+### File: backend/src/routes/albums.ts
+
+  - **classname**: (なし)
+  - **function name**: POST /
+      - **short description**: Creates a new album with an initial page for the authenticated user. [cite: 848]
+      - **input / output**:
+          - **Input**: { "title": "string (optional, max 100)" } (in request body) [cite: 848]
+          - **Output (Success 201)**: { "albumId": "string (uuid)", "title": "string", "createdAt": "string (date-time)", "updatedAt": "string (date-time)", "pages": [{ "pageId": "string (uuid)", "pageNumber": 1 }] } [cite: 848]
+          - **Output (Error 400/401/404/500)**: { "error": "string", "message": "string" } [cite: 848]
+  - **function name**: GET /
+      - **short description**: Retrieves a list of albums owned by the authenticated user. [cite: 849]
+      - **input / output**:
+          - **Input**: None (JWT token in header) [cite: 849]
+          - **Output (Success 200)**: [ { "albumId": "string (uuid)", "title": "string", "createdAt": "string (date-time)", "updatedAt": "string (date-time)" } ] [cite: 849]
+          - **Output (Error 401/500)**: { "error": "string", "message": "string" } [cite: 849]
+  - **function name**: DELETE /:albumId
+      - **short description**: Deletes a specific album owned by the authenticated user, including associated pages and objects (via cascading). [cite: 850]
+      - **input / output**:
+          - **Input**: albumId (in path parameter), JWT token (in header) [cite: 850]
+          - **Output (Success 204)**: No Content [cite: 850]
+          - **Output (Error 401/403/404/500)**: { "error": "string", "message": "string" } [cite: 850]
+  - **function name**: POST /albums/:albumId/pages handler (async function)
+      - **short description**: 指定されたアルバムに新しいページを追加するAPIエンドポイント。 [cite: 852]
+      - **input / output**:
+          - **Input**: albumId (in path parameter), JWT token (in header) [cite: 852]
+          - **Output (Success 201)**: { "pageId": "string (uuid)", "pageNumber": "integer" } [cite: 852]
+          - **Output (Error 401/403/404/500)**: { "error": "string", "message": "string" } [cite: 852]
+  - **function name**: POST /albums/:albumId/objects handler (async function)
+      - **short description**: 指定されたアルバムのページに新しいオブジェクト（写真、ステッカー、テキスト、描画）を追加するAPIエンドポイント。 [cite: 853]
+      - **input / output**:
+          - **Input**: albumId (in path parameter), Request body { pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation?: number, zIndex?: number, contentData: object }, JWT token (in header) [cite: 853]
+          - **Output (Success 201)**: { objectId: string, pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string } [cite: 853]
+          - **Output (Error 400/401/403/404/500)**: { error: string, message: string } [cite: 853]
+  - **function name**: PUT /albums/:albumId/objects/:objectId handler (async function)
+      - **short description**: 指定されたアルバムのページ上の既存のオブジェクトを更新するAPIエンドポイント。 [cite: 854]
+      - **input / output**:
+          - **Input**: albumId, objectId (in path parameters), Request body { positionX?: number, positionY?: number, width?: number, height?: number, rotation?: number, zIndex?: number, contentData?: object }, JWT token (in header) [cite: 854]
+          - **Output (Success 200)**: { objectId: string, pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string } [cite: 854]
+          - **Output (Error 400/401/403/404/500)**: { error: string, message: string } [cite: 854]
+  - **function name**: DELETE /albums/:albumId/objects/:objectId handler (async function)
+      - **short description**: 指定されたアルバムのページ上のオブジェクトを削除するAPIエンドポイント。 [cite: 855]
+      - **input / output**:
+          - **Input**: albumId, objectId (in path parameters), JWT token (in header) [cite: 855]
+          - **Output (Success 204)**: No Content [cite: 855]
+          - **Output (Error 400/401/403/404/500)**: { error: string, message: string } [cite: 855]
+
+### File: backend/src/index.ts
+
+  - **short description**: This is the main entry point for the backend Express application. It sets up middleware (CORS, JSON parsing), mounts routers for different functionalities (auth, albums, photos), initializes the database connection, and starts the server. It also includes generic error handling middleware. [cite: 758, 759, 760, 761, 762, 763, 764, 766]
+
+### File: backend/data-source.ts
+
+  - **short description**: This file configures and exports the TypeORM DataSource for connecting to the MS SQL database. It reads database connection parameters from environment variables. [cite: 400, 401, 402, 403]
+  - **object name**: dataSourceOptions
+      - **short description**: An object containing the configuration options for the TypeORM DataSource, including database type, host, port, username, password, database name, synchronization settings, logging, entity paths, migration paths, and other MSSQL specific options. [cite: 401, 402]
+      - **input / output**: Not applicable for an object.
+  - **object name**: dataSource
+      - **short description**: An instance of the TypeORM DataSource created with the `dataSourceOptions`. This is the main object used to interact with the database. [cite: 403]
+      - **input / output**: Not applicable for an object.
+
+### File: backend/tsconfig.json
+
+  - **short description**: This is a TypeScript configuration file for the backend project. It specifies compiler options such as the target JavaScript version, module system, enabling experimental decorators, and strict type checking. [cite: 410, 414, 415, 423, 474, 476, 477, 482, 498]
+
+### File: definitions/architect/api\_specification.md
+
+  - **short description**: This markdown file defines the API specification for the "アルバムメーカー" (Album Maker) application's backend. It details authentication endpoints, user management, album management, photo management, and album editing functionalities, including request/response formats and status codes. [cite: 71, 77, 82, 88, 90, 93, 99, 100, 102, 104, 105, 107, 108, 113, 117]
+
+### File: definitions/architect/component\_design.md
+
+  - **short description**: This markdown file describes the component design of the "アルバムメーカー" (Album Maker) application using a class diagram. It outlines the main components in the Backend API, Database, Frontend Application, and External Services, along with their relationships. [cite: 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 137]
+
+### File: definitions/architect/database\_schema.md
+
+  - **short description**: This document defines the database schema for the "アルバムメーカー" (Album Maker) application. It includes an Entity Relationship Diagram (ERD) and detailed definitions for tables such as `users`, `albums`, `photos`, `album_pages`, and `album_objects`, specifying column names, data types, constraints, and indexes. It also provides examples of the JSONB `content_data` structure for different object types. [cite: 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 163, 178, 204, 220, 264, 265, 266, 267]
+
+### File: definitions/architect/sequence\_diagrams.md
+
+  - **short description**: This document provides sequence diagrams illustrating the interactions between components for major use cases in the "アルバムメーカー" (Album Maker) application. The diagrams cover processes like login, user registration, album listing/creation, photo upload, and various album editing operations (adding/updating/deleting objects, downloading albums). [cite: 268, 269, 270, 271, 272, 273, 274, 275, 276, 278, 279, 281]
+
+### File: definitions/architect/system\_architecture.md
+
+  - **short description**: This document defines the system architecture for the "アルバムメーカー" (Album Maker) application. It outlines the system components including the frontend (React, TypeScript), backend API (Node.js, NestJS, TypeScript), database (Azure Database), and storage (Azure Blob Storage). It also provides an architecture overview diagram and describes the roles and interactions of these components. [cite: 499, 500, 501, 502, 503, 504, 505]
+
+### File: definitions/architect/ui\_design.md
+
+  - **short description**: This document outlines the UI design for the "アルバムメーカー" (Album Maker) application, including screen transition diagrams and detailed YAML descriptions of the Album List and Album Edit screens. It specifies the layout and components for each screen. [cite: 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528]
+
+### File: definitions/repo/implementation.txt
+
+  - **short description**: This file contains a structured description of various source code files, including their class names (if any), function names, short descriptions, and input/output specifications for those functions. It covers files from both the backend (routes) and frontend (components) of the "アルバムメーカー" application. [cite: 845, 846, 847, 848, 849, 850, 851, 852, 853, 854, 855, 856, 857]
+
+### File: definitions/requirements/business\_requirements.md
+
+  - **short description**: This document outlines the business requirements for the "アルバムメーカー" (Album Maker) service. It describes the service overview, key features (photo uploading, album creation with drag-and-drop, decoration with text/stickers), and user operations. [cite: 282]
+
+### File: definitions/requirements/system\_requirements.md
+
+  - **short description**: This document defines the system requirements for the "アルバムメーカー" (Album Maker) application. It details the product overview, objectives, system configuration (Azure services), technology stack (React, Node.js/NestJS), functional requirements (user management, album management, photo management, album editing features), non-functional requirements (skipped), screen designs, and use cases. [cite: 715, 716, 717, 718]
+
+### File: definitions/roadmap.md
+
+  - **short description**: This document outlines the development roadmap for the "アルバムメーカー" (Album Maker) application. It is divided into phases, detailing tasks, descriptions, priorities, responsible labels, statuses, and remarks for building the application, from foundational setup and core features (MVP) to extended album editing functionalities and quality improvements. [cite: 570, 571, 572, 573, 574, 575, 576, 577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600, 601, 602, 603, 604, 605, 606, 607, 608, 609, 610, 611, 612, 613, 614, 615, 616, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 652, 653, 654, 655, 656, 657, 658, 659, 660, 661, 662, 663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674, 675, 676, 677, 678, 679, 680, 681, 682, 683]
+
+### File: frontend/public/index.html
+
+  - **short description**: This is the main HTML file for the React application. It serves as the entry point and includes placeholders for the React app to be injected into the `div` with the id "root". It also links to the manifest file and sets up basic meta tags. [cite: 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294]
+
+### File: frontend/public/manifest.json
+
+  - **short description**: This JSON file provides metadata for the web application, used when the app is installed on a user's mobile device or desktop. It includes information like the app's short name, name, icons for different sizes, start URL, display mode, theme color, and background color. [cite: 295]
+
+### File: frontend/public/robots.txt
+
+  - **short description**: This file instructs web crawlers (like search engine bots) on which parts of the website they are allowed or disallowed to access. In this case, it allows all user-agents to crawl all parts of the site.
+
+### File: frontend/src/components/AlbumEdit.css
+
+  - **short description**: This CSS file provides styles for the Album Edit component (`AlbumEdit.tsx`). It defines the layout and appearance of the album editing interface, including the header, toolbar, main canvas area, and sidebar. [cite: 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306]
+
+### File: frontend/src/components/Login.tsx
+
+  - **classname**: Login (React Functional Component)
+  - **function name**: Login (React Functional Component)
+      - **short description**: ログインフォームとAPI連携、ユーザー登録画面への遷移機能を提供するコンポーネント [cite: 846]
+      - **input / output**:
+          - **input**: なし (内部でユーザー名とパスワードの状態を管理) [cite: 846]
+          - **output**: ログインフォームのUI要素。ログインボタンクリック時に `/auth/login` APIを呼び出す。登録ボタンクリック時に `/register` へ遷移する。 [cite: 846]
+  - **function name**: handleSubmit
+      - **short description**: Handles the form submission for login. It sends a POST request to the login API endpoint with the username and password. On success, it stores the token and navigates to the albums page. On failure, it displays an error message. [cite: 531, 532, 533, 534, 535, 536, 537, 538, 539]
+      - **input / output**:
+          - **input**: event: React.FormEvent
+          - **output**: void (updates state, navigates, or displays errors)
+  - **function name**: handleRegisterClick
+      - **short description**: Navigates the user to the registration page (`/register`) when clicked. [cite: 540]
+      - **input / output**:
+          - **input**: None
+          - **output**: void (navigates to another route)
+
+### File: frontend/src/components/Register.tsx
+
+  - **classname**: Register (React Functional Component)
+  - **function name**: Register (React Functional Component)
+      - **short description**: ユーザー登録フォームとAPI連携機能を提供するコンポーネント [cite: 846]
+      - **input / output**:
+          - **input**: なし (内部でユーザー名とパスワードの状態を管理) [cite: 846]
+          - **output**: ユーザー登録フォームのUI要素。登録ボタンクリック時に `/auth/register` APIを呼び出す。 [cite: 846]
+  - **function name**: handleSubmit
+      - **short description**: Handles the form submission for user registration. It sends a POST request to the registration API endpoint with the username and password. On success, it alerts the user and navigates to the login page. On failure, it displays an error message. [cite: 548, 549, 550, 551, 552, 553, 554, 555]
+      - **input / output**:
+          - **input**: event: React.FormEvent
+          - **output**: void (updates state, navigates, or displays errors)
+  - **function name**: handleLoginClick
+      - **short description**: Navigates the user to the login page (`/login`) when clicked. [cite: 556]
+      - **input / output**:
+          - **input**: None
+          - **output**: void (navigates to another route)
+
+### File: frontend/src/components/AlbumList.tsx
+
+  - **classname**: N/A (Functional Component)
+  - **function name**: AlbumList
+      - **short description**: Displays a list of albums for the authenticated user. It fetches album data from the API and provides options to create a new album or navigate to an existing album's edit page. It also includes a logout button. [cite: 850, 851]
+      - **input / output**:
+          - **input**: None (fetches data internally based on stored token) [cite: 851]
+          - **output**: JSX.Element (React component rendering the album list UI) [cite: 851]
+  - **function name**: fetchAlbums (useEffect hook)
+      - **short description**: Fetches the list of albums from the `/api/albums` endpoint when the component mounts or `Maps` function changes. It requires an authentication token. If no token is found, it navigates to the login page. [cite: 687, 688]
+      - **input / output**:
+          - **input**: None
+          - **output**: void (updates `albums` or `error` state)
+  - **function name**: handleLogout
+      - **short description**: Removes the authentication token from local storage and navigates the user to the login page. [cite: 689]
+      - **input / output**:
+          - **input**: None
+          - **output**: void (navigates to another route)
+  - **function name**: handleCreateAlbum
+      - **short description**: Sends a POST request to the `/api/albums` endpoint to create a new album with a default title. On success, it navigates to the edit page of the newly created album. [cite: 690, 691, 692, 693, 694, 695]
+      - **input / output**:
+          - **input**: None
+          - **output**: void (navigates to another route or updates `error` state)
+
+### File: frontend/src/components/AlbumEdit.tsx
+
+  - **classname**: AlbumEdit (React Functional Component)
+  - **function name**: AlbumEdit (React Functional Component)
+      - **short description**: アルバム編集画面の基本レイアウト、ツールバー、サイドバーを提供するコンポーネント。写真のドラッグ＆ドロップによる配置、ページ追加機能を持つ。 [cite: 852]
+      - **input / output**:
+          - **input**: URLパラメータ (albumId) [cite: 852]
+          - **output**: アルバム編集画面のUI要素。 [cite: 852]
+  - **function name**: useEffect hook (for albumId)
+      - **short description**: Executes when `params.albumId` changes. It sets the `albumId` state and logs it. Placeholder for fetching album details and photos based on the `albumId`. Currently loads mock photo data. [cite: 724, 725]
+      - **input / output**:
+          - **input**: `params.albumId` (from react-router-dom)
+          - **output**: void (updates state, logs messages)
+  - **function name**: handleAddPage
+      - **short description**: Sends a POST request to the `/api/albums/:albumId/pages` endpoint to add a new page to the current album. Requires an authentication token. [cite: 726, 727, 728, 729, 730, 731, 732, 733, 734]
+      - **input / output**:
+          - **input**: None
+          - **output**: void (logs messages, shows alerts, potentially updates state in a full implementation)
+  - **function name**: handleDragStart
+      - **short description**: ドラッグ操作開始時に、ドラッグされた写真情報を保持する。 [cite: 855]
+      - **input / output**:
+          - **input**: React.DragEvent\<HTMLDivElement\>, photo: Photo [cite: 855]
+          - **output**: なし (内部状態でdraggedPhotoを更新) [cite: 855]
+  - **function name**: handleDragOver
+      - **short description**: ドロップ操作を許可するために、dragoverイベントのデフォルト動作をキャンセルする。 [cite: 856]
+      - **input / output**:
+          - **input**: React.DragEvent\<HTMLDivElement\> [cite: 856]
+          - **output**: なし [cite: 856]
+  - **function name**: handleDrop
+      - **short description**: 写真がドロップされた際に、ドロップ位置と写真情報からオブジェクト作成APIを呼び出し、キャンバスに写真オブジェクトを追加する。 [cite: 857]
+      - **input / output**:
+          - **input**: React.DragEvent\<HTMLDivElement\> [cite: 857]
+          - **output**: なし (成功時: albumObjects状態を更新、失敗時: エラーアラート表示) [cite: 857]
+
+### File: frontend/src/App.css
+
+  - **short description**: This CSS file contains styles for the main App component. It includes basic text alignment, styles for the App logo (including a spin animation), and the App header. [cite: 307, 308, 309, 310]
+
+### File: frontend/src/App.test.tsx
+
+  - **short description**: This file contains a simple test for the App component using React Testing Library. It checks if the "learn react" link is rendered. [cite: 311, 312]
+  - **function name**: test('renders learn react link', ...)
+      - **short description**: A Jest test case that renders the `App` component and asserts that an element containing the text "learn react" (case-insensitive) is present in the document. [cite: 312]
+      - **input / output**:
+          - **input**: None
+          - **output**: Test result (pass/fail)
+
+### File: frontend/src/App.tsx
+
+  - **classname**: App (React Functional Component)
+  - **function name**: App (React Functional Component)
+      - **short description**: アプリケーションのメインコンポーネント。ルーティングを設定し、ログイン画面、ユーザー登録画面、アルバム一覧画面、アルバム編集画面を表示する。 [cite: 847]
+      - **input / output**:
+          - **input**: なし [cite: 847]
+          - **output**: URLパスに応じた画面コンポーネント (Login, Register, AlbumList, or AlbumEdit) [cite: 702, 703, 704, 847]
+
+### File: frontend/src/index.css
+
+  - **short description**: This CSS file provides global styles for the application. It resets the default margin on the body, sets a default font family, and enables anti-aliasing for fonts. It also defines a monospace font family for `code` elements. [cite: 313, 314, 315]
+
+### File: frontend/src/index.tsx
+
+  - **short description**: This is the main entry point for the React application. It imports necessary modules, renders the root `App` component into the DOM element with the ID 'root', and sets up `reportWebVitals`. [cite: 316, 317, 318]
+  - **function name**: reportWebVitals
+      - **short description**: A function imported from `./reportWebVitals` which is called to measure performance metrics. [cite: 318]
+      - **input / output**:
+          - **input**: (optional) onPerfEntry: ReportHandler
+          - **output**: void
+
+### File: frontend/src/logo.svg
+
+  - **short description**: This is an SVG file defining the React logo. It consists of several path and circle elements that form the characteristic atom-like symbol. [cite: 319, 320]
+
+### File: frontend/src/react-app-env.d.ts
+
+  - **short description**: This file is a TypeScript declaration file. It references the type definitions for `react-scripts`, which provides support for Create React App's environment variables and features within a TypeScript project.
+
+### File: frontend/src/reportWebVitals.ts
+
+  - **short description**: This file defines a function `reportWebVitals` that, if provided with a callback function (`onPerfEntry`), dynamically imports the `web-vitals` library and calls its functions (getCLS, getFID, getFCP, getLCP, getTTFB) to measure various performance metrics of the web application. [cite: 321, 322]
+  - **function name**: reportWebVitals
+      - **short description**: If a `onPerfEntry` callback is provided and is a function, this function imports web-vitals and calls its metric gathering functions with the callback. [cite: 321, 322]
+      - **input / output**:
+          - **input**: onPerfEntry?: ReportHandler
+          - **output**: void
+
+### File: frontend/src/setupProxy.js
+
+  - **short description**: This JavaScript file configures a proxy for the frontend development server. It uses `http-proxy-middleware` to forward requests made to `/api` on the frontend to the backend server (specified by `REACT_APP_BACKEND_URL` or defaulting to `http://localhost:3000`). It also rewrites the path by removing `/api` before forwarding. [cite: 323, 324]
+  - **function name**: (module.exports function)
+      - **short description**: This function takes the Express `app` object as an argument and sets up a proxy middleware for paths starting with `/api`. [cite: 323]
+      - **input / output**:
+          - **input**: app (Express app object)
+          - **output**: void (modifies the app object by adding middleware)
+
+### File: frontend/src/setupTests.ts
+
+  - **short description**: This file is used to set up the testing environment for Jest. It imports `@testing-library/jest-dom` to add custom Jest matchers for asserting on DOM nodes, allowing for more expressive tests (e.g., `expect(element).toHaveTextContent(/react/i)`). [cite: 325]
+
+### File: frontend/.gitignore
+
+  - **short description**: This file specifies intentionally untracked files that Git should ignore. It includes common Node.js dependencies (`/node_modules`, `.pnp`, `.pnp.js`), testing output (`/coverage`), production builds (`/build`), miscellaneous system files (`.DS_Store`), environment configuration files (`.env.*`), and log files. [cite: 326]
+
+### File: frontend/README.md
+
+  - **short description**: This README file provides information about the frontend project, which was bootstrapped with Create React App. It lists available scripts like `npm start`, `npm test`, `npm run build`, and `npm run eject`, and provides links to learn more about Create React App and React. [cite: 327, 328, 329, 330, 331, 332, 333, 340, 341]
+
+### File: frontend/tsconfig.json
+
+  - **short description**: This is the TypeScript configuration file for the frontend React project. It specifies various compiler options such as target ECMAScript version, libraries to include, JSX processing, module system, module resolution strategy, and strictness options. [cite: 342]
+
+### File: .gitignore
+
+  - **short description**: This file specifies intentionally untracked files that Git should ignore for the entire project. It includes Node.js dependency folders for both backend and frontend, and the backend's `.env` file.
+
+### File: ai\_chat\_log.md
+
+  - **short description**: This file appears to be a log of interactions or prompts related to UI generation from images and the creation of design documents (class diagrams, sequence diagrams, API specifications, database schemas) for a project. It also mentions working on GitHub issues. [cite: 708, 709, 710, 711, 712]
+
+### File: backend/package.json
+
+  - **short description**: This is the `package.json` file for the backend Node.js project. It defines project metadata, scripts (for testing, development, TypeORM migrations), keywords, author, license, description, engine requirements (Node.js v22+), devDependencies (like TypeScript, Nodemon, testing types), and dependencies (like Express, TypeORM, Azure Storage Blob, bcrypt, JWT). [cite: 713, 714]
+
+### File: schedule.txt
+
+  - **short description**: This file contains a schedule or log of time spent on various development tasks for the "アルバムメーカー" (Album Maker) project, dated from April 26th to May 8th. Tasks include requirement definition, screen design, system architecture, database design, Azure environment setup, and working on specific issues.
+
+### File: .repomix/bundles.json
+
+  - **short description**: This file contains an empty JSON object under the "bundles" key. It is likely a configuration or output file for the Repomix tool.
+
+### File: backend/src/middleware/authMiddleware.ts
+
+  - **short description**: This file defines an authentication middleware using JSON Web Tokens (JWT) for an Express application.
+  - **function name**: authenticateToken
+      - **short description**: Express middleware function to authenticate requests using a JWT token from the Authorization header. It verifies the token and, if valid, attaches the decoded user payload to the `req.user` object. [cite: 562, 563, 564, 565, 566, 567, 568, 569]
+      - **input / output**:
+          - **input**: req: Request, res: Response, next: NextFunction
+          - **output**: void (sends response on error or calls `next()` on success)
+
+================================================================
+End of Codebase
+================================================================

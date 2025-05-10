@@ -11,3 +11,11 @@
 ## 作業
 read definitions folder to understand this project.
 check github issues #~~ and work on it.
+
+## リポジトリファイル生成
+This file describe a repository. Rewrite the source code of each file in the following format.
+- classname (if exist)
+- function name
+- short description:
+- input / output:
+if there is no functions or classes, please write short description.
