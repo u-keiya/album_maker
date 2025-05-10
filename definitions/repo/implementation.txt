@@ -83,7 +83,6 @@ input / output:
   Output (Success 201): { "photoId": "string (uuid)", "filePath": "string (url)", "originalFilename": "string", "uploadedAt": "string (date-time)", "fileSize": "number", "mimeType": "string" }
   Output (Error 400/401/404/500): { "error": "string", "message": "string", "details"?: string }
 ---
----
 file name: backend/src/routes/photos.ts
 classname: (なし)
 function name: DELETE /photos/:photoId handler (async function)
@@ -93,7 +92,6 @@ input / output:
   Output (Success 204): No Content
   Output (Error 400/401/404/500): { "error": "string", "message": "string", "details"?: string }
 ---
----
 file name: frontend/src/components/AlbumEdit.tsx
 classname: AlbumEdit (React Functional Component)
 function name: AlbumEdit (React Functional Component)
@@ -101,4 +99,13 @@ short description: アルバム編集画面の基本レイアウト、ツール�
 input / output:
     - input: URLパラメータ (albumId)
     - output: アルバム編集画面のUI要素。
+---
+file name: backend/src/routes/albums.ts
+classname: (なし)
+function name: POST /albums/:albumId/pages handler (async function)
+short description: 指定されたアルバムに新しいページを追加するAPIエンドポイント。
+input / output:
+  Input: albumId (in path parameter), JWT token (in header)
+  Output (Success 201): { "pageId": "string (uuid)", "pageNumber": "integer" }
+  Output (Error 401/403/404/500): { "error": "string", "message": "string" }
 ---

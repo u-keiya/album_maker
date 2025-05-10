@@ -7,3 +7,7 @@
 - next, write sequence diagram. please use mermaid.
 - Let's move on to API specification refinement.
 - Let's proceed to the detailed design of the database schema.
+
+## 作業
+read definitions folder to understand this project.
+check github issues #~~ and work on it.
