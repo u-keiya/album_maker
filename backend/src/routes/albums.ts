@@ -2,6 +2,7 @@ import express, { Request, Response, Router } from 'express';
 import AppDataSource from '../../data-source'; // Corrected import
 import { Album } from '../entities/Album';
 import { AlbumPage } from '../entities/AlbumPage';
+import { AlbumObject } from '../entities/AlbumObject'; // Add AlbumObject import
 import { User } from '../entities/User'; // Assuming User entity exists and is populated by auth middleware
 import { authenticateToken } from '../middleware/authMiddleware'; // Corrected path if needed, assuming it's correct now
 import { EntityManager } from 'typeorm';
@@ -200,6 +201,203 @@ router.post('/:albumId/pages', authenticateToken, async (req: Request, res: Resp
     } catch (error) {
         console.error('Error adding page to album:', error);
         return res.status(500).json({ error: 'ServerError', message: 'Failed to add page to album.' });
+    }
+});
+
+// POST /albums/:albumId/objects - Add an object to a page in an album
+router.post('/:albumId/objects', authenticateToken, async (req: Request, res: Response) => {
+    const { albumId } = req.params;
+    const { pageId, type, positionX, positionY, width, height, rotation, zIndex, contentData } = req.body;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
+    }
+
+    if (!pageId || !type || positionX === undefined || positionY === undefined || !width || !height || !contentData) {
+        return res.status(400).json({ error: 'InvalidInput', message: 'Missing required object data.' });
+    }
+
+    const albumRepository = AppDataSource.getRepository(Album);
+    const pageRepository = AppDataSource.getRepository(AlbumPage);
+    const objectRepository = AppDataSource.getRepository(AlbumObject);
+
+    try {
+        // 1. Find the album and verify ownership
+        const album = await albumRepository.findOne({ where: { album_id: albumId, user_id: userId } });
+        if (!album) {
+            return res.status(404).json({ error: 'NotFound', message: 'Album not found or user does not have access.' });
+        }
+
+        // 2. Find the page within that album
+        const page = await pageRepository.findOne({ where: { page_id: pageId, album_id: albumId } });
+        if (!page) {
+            return res.status(404).json({ error: 'NotFound', message: 'Page not found in the specified album.' });
+        }
+
+        // 3. Create and save the new object
+        const newObject = new AlbumObject();
+        newObject.page = page;
+        newObject.type = type;
+        newObject.position_x = positionX;
+        newObject.position_y = positionY;
+        newObject.width = width;
+        newObject.height = height;
+        newObject.rotation = rotation || 0;
+        newObject.z_index = zIndex || 0;
+        newObject.content_data = contentData;
+        // newObject.page_id = pageId; // page relation will handle this
+
+        await objectRepository.save(newObject);
+
+        // 4. Prepare and send response
+        const responseObject = {
+            objectId: newObject.object_id,
+            pageId: newObject.page.page_id, // Access via relation
+            type: newObject.type,
+            positionX: newObject.position_x,
+            positionY: newObject.position_y,
+            width: newObject.width,
+            height: newObject.height,
+            rotation: newObject.rotation,
+            zIndex: newObject.z_index,
+            contentData: newObject.content_data,
+            createdAt: newObject.created_at,
+            updatedAt: newObject.updated_at,
+        };
+
+        return res.status(201).json(responseObject);
+
+    } catch (error) {
+        console.error('Error adding object to page:', error);
+        // Add more specific error handling based on potential issues
+        if (error instanceof Error && error.message.includes('violates check constraint')) { // Example for type validation
+            return res.status(400).json({ error: 'InvalidInput', message: 'Invalid object type or content data.' });
+        }
+        return res.status(500).json({ error: 'ServerError', message: 'Failed to add object to page.' });
+    }
+});
+
+// PUT /albums/:albumId/objects/:objectId - Update an object on a page
+router.put('/:albumId/objects/:objectId', authenticateToken, async (req: Request, res: Response) => {
+    const { albumId, objectId } = req.params;
+    const { positionX, positionY, width, height, rotation, zIndex, contentData } = req.body;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
+    }
+
+    const albumRepository = AppDataSource.getRepository(Album);
+    const objectRepository = AppDataSource.getRepository(AlbumObject);
+
+    try {
+        // 1. Find the album to verify ownership (indirectly, by checking if object exists within user's album context)
+        // A more direct way is to join through AlbumPage to Album to User.
+        // For simplicity here, we'll find the object and then check its album's user.
+        const existingObject = await objectRepository.findOne({
+            where: { object_id: objectId },
+            relations: ['page', 'page.album'], // Load related entities to check ownership
+        });
+
+        if (!existingObject) {
+            return res.status(404).json({ error: 'NotFound', message: 'Object not found.' });
+        }
+
+        // Check if the album exists and belongs to the user
+        if (!existingObject.page || !existingObject.page.album) {
+             return res.status(404).json({ error: 'NotFound', message: 'Associated page or album not found for the object.' });
+        }
+        if (existingObject.page.album.album_id !== albumId) {
+            return res.status(400).json({ error: 'InvalidInput', message: 'Object does not belong to the specified album.' });
+        }
+        if (existingObject.page.album.user_id !== userId) {
+            return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to modify this object.' });
+        }
+
+
+        // 2. Update object properties if provided
+        if (positionX !== undefined) existingObject.position_x = positionX;
+        if (positionY !== undefined) existingObject.position_y = positionY;
+        if (width !== undefined) existingObject.width = width;
+        if (height !== undefined) existingObject.height = height;
+        if (rotation !== undefined) existingObject.rotation = rotation;
+        if (zIndex !== undefined) existingObject.z_index = zIndex;
+        if (contentData !== undefined) existingObject.content_data = contentData;
+
+        // Touch the updated_at timestamp
+        existingObject.updated_at = new Date();
+
+        await objectRepository.save(existingObject);
+
+        // 3. Prepare and send response
+        const responseObject = {
+            objectId: existingObject.object_id,
+            pageId: existingObject.page.page_id,
+            type: existingObject.type,
+            positionX: existingObject.position_x,
+            positionY: existingObject.position_y,
+            width: existingObject.width,
+            height: existingObject.height,
+            rotation: existingObject.rotation,
+            zIndex: existingObject.z_index,
+            contentData: existingObject.content_data,
+            createdAt: existingObject.created_at,
+            updatedAt: existingObject.updated_at,
+        };
+
+        return res.status(200).json(responseObject);
+
+    } catch (error) {
+        console.error('Error updating object:', error);
+        if (error instanceof Error && error.message.includes('violates check constraint')) {
+            return res.status(400).json({ error: 'InvalidInput', message: 'Invalid object type or content data for update.' });
+        }
+        return res.status(500).json({ error: 'ServerError', message: 'Failed to update object.' });
+    }
+});
+
+// DELETE /albums/:albumId/objects/:objectId - Delete an object from a page
+router.delete('/:albumId/objects/:objectId', authenticateToken, async (req: Request, res: Response) => {
+    const { albumId, objectId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
+    }
+
+    const objectRepository = AppDataSource.getRepository(AlbumObject);
+
+    try {
+        // 1. Find the object and verify ownership (similar to PUT)
+        const existingObject = await objectRepository.findOne({
+            where: { object_id: objectId },
+            relations: ['page', 'page.album'],
+        });
+
+        if (!existingObject) {
+            return res.status(404).json({ error: 'NotFound', message: 'Object not found.' });
+        }
+
+        if (!existingObject.page || !existingObject.page.album) {
+            return res.status(404).json({ error: 'NotFound', message: 'Associated page or album not found for the object.' });
+        }
+        if (existingObject.page.album.album_id !== albumId) {
+            return res.status(400).json({ error: 'InvalidInput', message: 'Object does not belong to the specified album.' });
+        }
+        if (existingObject.page.album.user_id !== userId) {
+            return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to delete this object.' });
+        }
+
+        // 2. Delete the object
+        await objectRepository.remove(existingObject);
+
+        // 3. Send success response
+        return res.status(204).send(); // No Content
+
+    } catch (error) {
+        console.error('Error deleting object:', error);
+        return res.status(500).json({ error: 'ServerError', message: 'Failed to delete object.' });
     }
 });
 
