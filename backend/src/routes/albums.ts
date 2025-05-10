@@ -146,4 +146,61 @@ router.delete('/:albumId', authenticateToken, async (req: Request, res: Response
     }
 });
 
+// POST /albums/:albumId/pages - Add a new page to an album
+router.post('/:albumId/pages', authenticateToken, async (req: Request, res: Response) => {
+    const { albumId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
+    }
+
+    const albumRepository = AppDataSource.getRepository(Album);
+    const pageRepository = AppDataSource.getRepository(AlbumPage);
+
+    try {
+        // Find the album
+        const album = await albumRepository.findOne({
+            where: { album_id: albumId },
+            relations: ['pages'], // Load existing pages to determine next page number
+        });
+
+        if (!album) {
+            return res.status(404).json({ error: 'NotFound', message: 'Album not found.' });
+        }
+
+        // Check if the authenticated user owns the album
+        if (album.user_id !== userId) {
+            return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to add pages to this album.' });
+        }
+
+        // Determine the next page number
+        let nextPageNumber = 1;
+        if (album.pages && album.pages.length > 0) {
+            const maxPageNumber = Math.max(...album.pages.map(p => p.page_number));
+            nextPageNumber = maxPageNumber + 1;
+        }
+
+        // Create new page
+        const newPage = new AlbumPage();
+        newPage.album = album; // Associate with the found album
+        newPage.page_number = nextPageNumber;
+
+        // Save the new page
+        await pageRepository.save(newPage);
+
+        // Prepare response data
+        const responseData = {
+            pageId: newPage.page_id,
+            pageNumber: newPage.page_number,
+        };
+
+        return res.status(201).json(responseData);
+
+    } catch (error) {
+        console.error('Error adding page to album:', error);
+        return res.status(500).json({ error: 'ServerError', message: 'Failed to add page to album.' });
+    }
+});
+
 export default router;
