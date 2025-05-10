@@ -25,14 +25,14 @@
 | アルバム削除 API 実装        | アルバム削除 API (`api_specification.md` 参照)                       | 高     | backend-engineer   | **完了 (#10)**  | 関連データ削除含む                     |
 | アルバム一覧画面 実装        | UIデザインに基づき画面実装、API連携 (一覧表示、新規作成ボタン)         | 高     | frontend-engineer  | **完了 (#11)**  |                                        |
 | **写真管理機能 (コア)**      |                                                                      |        |                    |            |                                        |
-| 写真アップロード API 実装    | 写真ファイルをストレージに保存し、DBに情報を登録 (`api_specification.md` 参照) | 高     | backend-engineer   | 未着手     | ファイルサイズ制限、形式チェック考慮 |
-| 写真削除 API 実装            | ストレージとDBから写真情報を削除 (`api_specification.md` 参照)       | 高     | backend-engineer   | 未着手     | アルバムとの関連も考慮                 |
+| 写真アップロード API 実装    | 写真ファイルをストレージに保存し、DBに情報を登録 (`api_specification.md` 参照) | 高     | backend-engineer   | **完了 (#23)** | ファイルサイズ制限、形式チェック考慮 |
+| 写真削除 API 実装            | ストレージとDBから写真情報を削除 (`api_specification.md` 参照)       | 高     | backend-engineer   | **完了 (#24)** | アルバムとの関連も考慮                 |
 | **アルバム編集機能 (基盤)**  |                                                                      |        |                    |            |                                        |
-| アルバム編集画面 基盤実装    | UIデザインに基づき編集画面の基本レイアウト、ツールバー、サイドバー実装 | 高     | frontend-engineer  | 未着手     |                                        |
-| ページ追加 API 実装          | アルバムにページを追加する API (`api_specification.md` 参照)         | 高     | backend-engineer   | 未着手     |                                        |
-| ページ追加 機能実装          | フロントエンドでのページ追加操作と API 連携                          | 高     | frontend-engineer  | 未着手     |                                        |
-| **オブジェクト追加/更新/削除 API 実装** | ページ上のオブジェクト操作 API (`api_specification.md` 参照) | 高     | backend-engineer   | 未着手     | **名称変更** (写真、ステッカー等共通) |
-| 写真配置 機能実装            | ドラッグ＆ドロップでの写真配置、API連携                              | 高     | frontend-engineer  | 未着手     | オブジェクトAPIを利用                  |
+| アルバム編集画面 基盤実装    | UIデザインに基づき編集画面の基本レイアウト、ツールバー、サイドバー実装 | 高     | frontend-engineer  | **完了 (#25)** |                                        |
+| ページ追加 API 実装          | アルバムにページを追加する API (`api_specification.md` 参照)         | 高     | backend-engineer   | **完了 (#26)** |                                        |
+| ページ追加 機能実装          | フロントエンドでのページ追加操作と API 連携                          | 高     | frontend-engineer  | **完了 (#27)** |                                        |
+| **オブジェクト追加/更新/削除 API 実装** | ページ上のオブジェクト操作 API (`api_specification.md` 参照) | 高     | backend-engineer   | **完了 (#28)** | **名称変更** (写真、ステッカー等共通) |
+| 写真配置 機能実装            | ドラッグ＆ドロップでの写真配置、API連携                              | 高     | frontend-engineer  | **完了 (#29)** | オブジェクトAPIを利用                  |
 | ~~アルバム保存 API 実装~~    | ~~編集内容 (オブジェクト情報) を保存する API~~                       | ~~高~~ | ~~backend-engineer~~ | ~~削除~~   | ~~オブジェクトAPIに統合~~              |
 | ~~アルバム保存 機能実装~~    | ~~保存ボタン押下時の API 連携~~                                      | ~~高~~ | ~~frontend-engineer~~| ~~削除~~   | ~~オブジェクトAPI利用に統合~~          |
 

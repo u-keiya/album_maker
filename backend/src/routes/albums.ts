@@ -401,4 +401,80 @@ router.delete('/:albumId/objects/:objectId', authenticateToken, async (req: Requ
     }
 });
 
+// GET /albums/:albumId - Get a specific album with its pages and objects
+router.get('/:albumId', authenticateToken, async (req: Request, res: Response) => {
+    const { albumId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
+    }
+
+    const albumRepository = AppDataSource.getRepository(Album);
+    const pageRepository = AppDataSource.getRepository(AlbumPage);
+    const objectRepository = AppDataSource.getRepository(AlbumObject);
+
+    try {
+        // 1. Find the album and verify ownership
+        const album = await albumRepository.findOne({
+            where: { album_id: albumId, user_id: userId },
+        });
+
+        if (!album) {
+            return res.status(404).json({ error: 'NotFound', message: 'Album not found or user does not have access.' });
+        }
+
+        // 2. Fetch the pages for the album
+        const pages = await pageRepository.find({
+            where: { album_id: albumId },
+            order: { page_number: 'ASC' },
+        });
+
+        // 3. Fetch the objects for each page
+        const pagesWithObjects = await Promise.all(
+            pages.map(async (page) => {
+                const objects = await objectRepository.find({
+                    where: { page_id: page.page_id },
+                });
+
+                return {
+                    ...page,
+                    objects,
+                };
+            })
+        );
+
+        // 4. Prepare and send the response
+        const responseData = {
+            albumId: album.album_id,
+            title: album.title,
+            createdAt: album.created_at,
+            updatedAt: album.updated_at,
+            pages: pagesWithObjects.map(page => ({
+                pageId: page.page_id,
+                pageNumber: page.page_number,
+                objects: page.objects.map(object => ({
+                    objectId: object.object_id,
+                    type: object.type,
+                    positionX: object.position_x,
+                    positionY: object.position_y,
+                    width: object.width,
+                    height: object.height,
+                    rotation: object.rotation,
+                    zIndex: object.z_index,
+                    contentData: object.content_data,
+                    createdAt: object.created_at,
+                    updatedAt: object.updated_at,
+                })),
+            })),
+        };
+
+        return res.status(200).json(responseData);
+
+    } catch (error) {
+        console.error('Error fetching album details:', error);
+        return res.status(500).json({ error: 'ServerError', message: 'Failed to fetch album details.' });
+    }
+});
+
 export default router;
