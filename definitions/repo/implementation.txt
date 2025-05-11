@@ -33,3 +33,86 @@
           - Added validation for `contentData.cropInfo` if `contentData` is provided in the request.
           - Validates `cropInfo.shape` and its dependent fields (`path`, `x`, `y`, `width`, `height`).
           - Ensures `contentData` is stringified before saving if it's an object.
+### File: frontend/src/components/AlbumEdit.tsx
+
+  - **component name**: AlbumEdit
+      - **short description**: (Existing description, if any, can be kept or updated. Focus on new changes) Component for editing an album. Allows users to select photo objects, enter a shape cropping mode, and save rectangular crop information.
+      - **input / output**:
+          - **Input (State)**: (In addition to existing) selectedObject (AlbumObject | null), cropMode ('shape' | 'freehand' | null), cropShape ({ x, y, width, height } | null)
+          - **Output (Render)**: (In addition to existing) Displays a visual cue for selected objects. When in 'shape' crop mode, shows a cropping rectangle overlay on the selected photo and provides UI elements to confirm or cancel the crop.
+      - **function name**: handleSelectObject
+          - **short description**: Sets the `selectedObject` state when a user clicks on an album object.
+          - **input / output**:
+              - **input**: obj: AlbumObject
+              - **output**: void (updates `selectedObject` state)
+      - **function name**: handleCropButtonClick
+          - **short description**: Initiates the photo cropping process. If a photo object is selected, it sets `cropMode` to 'shape' and initializes `cropShape` based on the selected object's dimensions.
+          - **input / output**:
+              - **input**: None
+              - **output**: void (updates `cropMode` and `cropShape` states, shows alerts)
+      - **function name**: handleConfirmCrop
+          - **short description**: Finalizes the rectangular crop. Constructs the updated `contentData` with `cropInfo` (containing x, y, width, height of the crop relative to the photo object) and sends a PUT request to `/api/albums/{albumId}/objects/{objectId}` to update the object. Resets cropping states on success or failure.
+          - **input / output**:
+              - **input**: None (uses `selectedObject`, `cropShape`, `album.albumId`, `currentPageId` from state)
+              - **output**: Promise&lt;void&gt; (updates server data, local album state, and resets cropping states)
+      - **key changes for issue #38**:
+          - Added `selectedObject`, `cropMode`, `cropShape` states.
+          - Implemented `handleSelectObject` to allow users to select an object on the canvas.
+          - Implemented `handleCropButtonClick` to enter shape cropping mode for selected photos.
+          - Implemented `handleConfirmCrop` to save rectangular crop data (`cropInfo`) to the backend via PUT request to the object update API.
+          - Added UI elements in the toolbar for confirming/cancelling crop and for debugging `cropShape` values.
+          - Added visual feedback for selected objects and a crop rectangle overlay.
+### File: frontend/src/components/AlbumEdit.tsx
+
+  - **component name**: AlbumEdit
+      - **short description**: (Updates for sticker functionality) Component for editing an album. Allows users to drag and drop photos and stickers from the sidebar onto the canvas. Supports tabbed navigation in the sidebar for photos and stickers.
+      - **input / output**:
+          - **Input (Interface)**: (New) Sticker { id, url, name }
+          - **Input (State)**: (New/Updated) stickers (Sticker[]), activeTab ('photos' | 'stickers'), draggedItem ({ type: 'photo' | 'sticker', data: Photo | Sticker } | null) - replaces draggedPhoto.
+          - **Output (Render)**: (Updated) Sidebar now has tabs for "写真" and "ステッカー". Displays a list of draggable stickers when the "ステッカー" tab is active. Canvas renders dropped stickers.
+      - **function name**: handleItemDragStart
+          - **short description**: Handles the drag start event for both photos and stickers. Sets `draggedItem` state with the type and data of the dragged item.
+          - **input / output**:
+              - **input**: e: React.DragEvent&lt;HTMLDivElement&gt;, item: Photo | Sticker, type: 'photo' | 'sticker'
+              - **output**: void (updates `draggedItem` state)
+      - **function name**: handleDrop
+          - **short description**: (Updated) Handles the drop event for both photos and stickers. Determines the type of the dropped item from `draggedItem`. Creates a new album object with the correct `type` ('photo' or 'sticker') and `contentData` (e.g., `{ photoId: ... }` or `{ stickerId: ... }`). Calls the API to save the new object.
+          - **input / output**:
+              - **input**: e: React.DragEvent&lt;HTMLDivElement&gt;
+              - **output**: Promise&lt;void&gt; (updates server data, local album state, and resets `draggedItem` state)
+      - **function name**: handleTabChange
+          - **short description**: Sets the `activeTab` state to switch between "写真" and "ステッカー" views in the sidebar.
+          - **input / output**:
+              - **input**: tab: 'photos' | 'stickers'
+              - **output**: void (updates `activeTab` state)
+      - **key changes for issue #39**:
+          - Added `Sticker` interface and mock `stickers` state.
+          - Added `activeTab` state and `handleTabChange` function for sidebar tab navigation.
+          - Replaced `draggedPhoto` state with `draggedItem` state to handle both photo and sticker dragging.
+          - Modified `handleDragStart` to `handleItemDragStart` to accommodate different item types.
+          - Updated `handleDrop` to differentiate between photo and sticker drops, setting the correct object type and `contentData` (e.g., `stickerId`) for the API request.
+          - Updated sidebar rendering to display photo or sticker lists based on `activeTab`.
+          - Added rendering logic for 'sticker' type objects on the canvas.
+### File: frontend/src/components/AlbumEdit.tsx
+
+  - **classname**: AlbumEdit (React Functional Component)
+  - **function name**: handleAddTextObject
+      - **short description**: ツールバーの「テキスト追加」ボタンがクリックされたときに、新しいテキストオブジェクトをキャンバスに追加し、API経由でサーバーに保存する。
+      - **input / output**:
+          - **input**: なし (内部でアルバムID、ページID、認証トークンを使用)
+          - **output**: なし (成功時: albumObjects stateを更新、失敗時: エラーアラート表示)
+  - **function name**: handleTextObjectClick
+      - **short description**: キャンバス上のテキストオブジェクトがクリックされたときに、そのオブジェクトを選択状態にし、テキスト編集モードを開始する。編集用のテキスト内容とスタイルをstateに読み込む。
+      - **input / output**:
+          - **input**: obj: AlbumObject (クリックされたテキストオブジェクト)
+          - **output**: なし (selectedObject, isTextEditing, editingText, currentTextObjectId, currentTextStyle stateを更新)
+  - **function name**: handleTextEditComplete
+      - **short description**: テキストオブジェクトの編集が完了した際（例: textareaからフォーカスが外れた時）に、変更されたテキスト内容とスタイルをAPI経由でサーバーに保存する。
+      - **input / output**:
+          - **input**: なし (内部でselectedObject, editingText, currentTextStyle, currentTextObjectId, 認証トークンを使用)
+          - **output**: なし (成功時: albumObjects stateを更新、失敗時: エラーアラート表示。isTextEditing, currentTextObjectId stateをリセット)
+  - **function name**: handleTextStyleChange
+      - **short description**: テキスト編集中にツールバーからフォント、サイズ、色、太字などのスタイルが変更された場合に、選択中のテキストオブジェクトのスタイル(currentTextStyle state)を更新し、キャンバス上のプレビューに即時反映する。
+      - **input / output**:
+          - **input**: styleProp: string (変更されたスタイルプロパティ名), value: any (新しい値)
+          - **output**: なし (currentTextStyle stateと、albumObjects内の該当オブジェクトのcontentDataを更新してプレビューに反映)

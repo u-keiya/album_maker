@@ -65,6 +65,15 @@ const AlbumEdit: React.FC = () => {
   const [cropMode, setCropMode] = useState<'shape' | 'freehand' | null>(null);
   const [cropShape, setCropShape] = useState<CropShape | null>(null);
   const [activeTab, setActiveTab] = useState<'photos' | 'stickers'>('photos');
+  const [editingText, setEditingText] = useState<string>('');
+  const [isTextEditing, setIsTextEditing] = useState<boolean>(false);
+  const [currentTextObjectId, setCurrentTextObjectId] = useState<string | null>(null);
+  const [currentTextStyle, setCurrentTextStyle] = useState({
+    font: 'Arial',
+    size: 16,
+    color: '#000000',
+    bold: false,
+  });
 
   const params = useParams();
   const albumIdFromParams = params.albumId;
@@ -415,6 +424,189 @@ const AlbumEdit: React.FC = () => {
     setActiveTab(tab);
   };
 
+  const handleAddTextObject = async () => {
+    if (!album?.albumId || !currentPageId) {
+      alert('アルバムまたはページが選択されていません。');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('認証トークンがありません。再度ログインしてください。');
+      return;
+    }
+
+    const newTextObjectRequest = {
+      pageId: currentPageId,
+      type: 'text' as 'text', // 型アサーション
+      positionX: 50, // 仮の初期位置
+      positionY: 50, // 仮の初期位置
+      width: 200,    // 仮の初期サイズ
+      height: 50,    // 仮の初期サイズ
+      rotation: 0,
+      zIndex: albumObjects.length,
+      contentData: JSON.stringify({
+        text: '新しいテキスト',
+        font: 'Arial',
+        size: 16,
+        color: '#000000',
+        bold: false,
+      }),
+    };
+
+    try {
+      const response = await fetch(`/api/albums/${album.albumId}/objects`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newTextObjectRequest),
+      });
+
+      if (response.ok) {
+        const newObject: AlbumObject = await response.json();
+        setAlbumObjects(prev => [...prev, newObject]);
+        if (album) {
+          const updatedPages = album.pages.map(page => {
+            if (page.pageId === currentPageId) {
+              return { ...page, objects: [...page.objects, newObject] };
+            }
+            return page;
+          });
+          setAlbum({ ...album, pages: updatedPages });
+        }
+        console.log('Text object added:', newObject);
+      } else {
+        const errorData = await response.json();
+        alert(`テキストオブジェクトの追加に失敗しました: ${errorData.message || response.status}`);
+      }
+    } catch (error) {
+      console.error('Error adding text object:', error);
+      alert('テキストオブジェクトの追加中にエラーが発生しました。');
+    }
+  };
+
+  const handleTextObjectClick = (obj: AlbumObject) => {
+    if (obj.type === 'text') {
+      setSelectedObject(obj);
+      setIsTextEditing(true);
+      setEditingText(obj.contentData.text || '');
+      setCurrentTextObjectId(obj.objectId);
+      setCurrentTextStyle({
+        font: obj.contentData.font || 'Arial',
+        size: obj.contentData.size || 16,
+        color: obj.contentData.color || '#000000',
+        bold: obj.contentData.bold || false,
+      });
+      console.log('Text object selected for editing:', obj);
+    }
+  };
+
+  const handleTextEditComplete = async () => {
+    if (!selectedObject || !album?.albumId || !currentTextObjectId || selectedObject.type !== 'text') {
+      setIsTextEditing(false);
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('認証トークンがありません。');
+      setIsTextEditing(false);
+      return;
+    }
+
+    const updatedContentData = {
+      ...selectedObject.contentData,
+      text: editingText,
+      font: currentTextStyle.font,
+      size: currentTextStyle.size,
+      color: currentTextStyle.color,
+      bold: currentTextStyle.bold,
+    };
+
+    const objectToUpdate = {
+      ...selectedObject,
+      contentData: JSON.stringify(updatedContentData),
+    };
+
+    try {
+      const response = await fetch(`/api/albums/${album.albumId}/objects/${currentTextObjectId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ // 送信するデータはAPIの仕様に合わせる
+          positionX: selectedObject.positionX,
+          positionY: selectedObject.positionY,
+          width: selectedObject.width,
+          height: selectedObject.height,
+          rotation: selectedObject.rotation,
+          zIndex: selectedObject.zIndex,
+          contentData: objectToUpdate.contentData,
+        }),
+      });
+
+      if (response.ok) {
+        const updatedObjectFromServer: AlbumObject = await response.json();
+        setAlbumObjects(prevObjects =>
+          prevObjects.map(obj =>
+            obj.objectId === updatedObjectFromServer.objectId ? updatedObjectFromServer : obj
+          )
+        );
+        if (album) {
+          const updatedPages = album.pages.map(page => {
+            if (page.pageId === currentPageId) {
+              return {
+                ...page,
+                objects: page.objects.map(obj =>
+                  obj.objectId === updatedObjectFromServer.objectId ? updatedObjectFromServer : obj
+                ),
+              };
+            }
+            return page;
+          });
+          setAlbum({ ...album, pages: updatedPages });
+        }
+        console.log('Text object updated successfully:', updatedObjectFromServer);
+      } else {
+        const errorData = await response.json();
+        alert(`テキストオブジェクトの更新に失敗しました: ${errorData.message || response.status}`);
+      }
+    } catch (error) {
+      console.error('Error updating text object:', error);
+      alert('テキストオブジェクトの更新中にエラーが発生しました。');
+    } finally {
+      setIsTextEditing(false);
+      setCurrentTextObjectId(null);
+      // setSelectedObject(null); // 他の操作のために選択状態は維持するかもしれない
+    }
+  };
+
+  const handleTextStyleChange = (styleProp: keyof typeof currentTextStyle, value: any) => {
+    setCurrentTextStyle(prev => ({ ...prev, [styleProp]: value }));
+    // 即時反映のために handleTextEditComplete を呼び出すか、編集中はローカルでスタイルを適用し、
+    // 編集完了時にまとめて保存する。ここでは編集中はローカルでスタイルを適用する方針。
+    if (selectedObject && selectedObject.type === 'text' && currentTextObjectId === selectedObject.objectId) {
+        const updatedContentData = {
+            ...selectedObject.contentData,
+            text: editingText, // Keep current text
+            font: styleProp === 'font' ? value : currentTextStyle.font,
+            size: styleProp === 'size' ? value : currentTextStyle.size,
+            color: styleProp === 'color' ? value : currentTextStyle.color,
+            bold: styleProp === 'bold' ? value : currentTextStyle.bold,
+        };
+        // Update local preview immediately
+        setAlbumObjects(prevObjects =>
+            prevObjects.map(obj =>
+                obj.objectId === currentTextObjectId
+                    ? { ...obj, contentData: updatedContentData }
+                    : obj
+            )
+        );
+    }
+  };
+
+
   return (
     <div className="album-edit-container">
       <header className="album-edit-header">
@@ -436,11 +628,16 @@ const AlbumEdit: React.FC = () => {
         <button>保存</button>
         <button onClick={handleAddPage}>ページ追加</button>
         <button onClick={handleCropButtonClick}>画像切り取り</button>
-        <button>テキスト追加</button>
-        <select><option>フォント</option></select>
-        <select><option>サイズ</option></select>
-        <input type="color" />
-        <button>太字</button>
+        <button onClick={handleAddTextObject}>テキスト追加</button>
+        <select value={currentTextStyle.font} onChange={(e) => handleTextStyleChange('font', e.target.value)} disabled={!isTextEditing || selectedObject?.type !== 'text'}>
+          <option value="Arial">Arial</option>
+          <option value="Verdana">Verdana</option>
+          <option value="Times New Roman">Times New Roman</option>
+          {/* 他のフォントオプション */}
+        </select>
+        <input type="number" value={currentTextStyle.size} onChange={(e) => handleTextStyleChange('size', parseInt(e.target.value))} disabled={!isTextEditing || selectedObject?.type !== 'text'} style={{width: '60px'}} />
+        <input type="color" value={currentTextStyle.color} onChange={(e) => handleTextStyleChange('color', e.target.value)} disabled={!isTextEditing || selectedObject?.type !== 'text'} />
+        <button onClick={() => handleTextStyleChange('bold', !currentTextStyle.bold)} disabled={!isTextEditing || selectedObject?.type !== 'text'} style={{ fontWeight: currentTextStyle.bold ? 'bold' : 'normal' }}>太字</button>
         <button>ペン</button>
         <select><option>太さ</option></select>
         <input type="color" />
@@ -529,21 +726,47 @@ const AlbumEdit: React.FC = () => {
               return (
                 <div
                   key={obj.objectId}
-                  className="album-object text-object"
+                  className={`album-object text-object ${selectedObject?.objectId === obj.objectId ? 'selected' : ''}`}
                   style={{
                     ...commonStyle,
                     color: obj.contentData.color || '#000000',
                     fontSize: `${obj.contentData.size || 16}px`,
                     fontWeight: obj.contentData.bold ? 'bold' : 'normal',
                     fontFamily: obj.contentData.font || 'Arial',
-                    border: '1px dashed #aaa', // テキストオブジェクトの枠
+                    border: selectedObject?.objectId === obj.objectId ? '2px solid blue' : '1px dashed #aaa',
                     padding: '5px',
                     boxSizing: 'border-box',
-                    overflow: 'hidden',
-                    whiteSpace: 'pre-wrap', // 改行を保持
+                    overflow: 'hidden', // Auto-sizing text might need different overflow
+                    whiteSpace: 'pre-wrap',
                   }}
+                  onClick={() => handleTextObjectClick(obj)}
+                  onDoubleClick={() => handleTextObjectClick(obj)} // Consider double click for edit
                 >
-                  {obj.contentData.text}
+                  {isTextEditing && currentTextObjectId === obj.objectId ? (
+                    <textarea
+                      value={editingText}
+                      onChange={(e) => setEditingText(e.target.value)}
+                      onBlur={handleTextEditComplete}
+                      autoFocus
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                        padding: '0',
+                        margin: '0',
+                        background: 'transparent',
+                        outline: 'none',
+                        resize: 'none', // Or allow resize and update object width/height
+                        fontFamily: currentTextStyle.font,
+                        fontSize: `${currentTextStyle.size}px`,
+                        color: currentTextStyle.color,
+                        fontWeight: currentTextStyle.bold ? 'bold' : 'normal',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  ) : (
+                    obj.contentData.text
+                  )}
                 </div>
               );
             } else if (obj.type === 'drawing') {
