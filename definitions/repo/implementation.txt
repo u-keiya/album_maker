@@ -21,3 +21,15 @@
           - Removed hardcoded `MOCK_CURRENT_PAGE_ID`.
           - Updated `handleAddPage` to refresh album state and switch to the new page.
           - Updated `handleDrop` to use `currentPageId` and refresh album/object state.
+### File: backend/src/routes/albums.ts
+
+  - **function name**: PUT /albums/:albumId/objects/:objectId handler (async function)
+      - **short description**: Updates an existing object on a page within an album. Added validation for `contentData`, specifically for `cropInfo` when the object type is 'photo'. Ensures `contentData` is stored as a JSON string.
+      - **input / output**:
+          - **Input**: albumId, objectId (in path parameters), Request body { positionX?: number, positionY?: number, width?: number, height?: number, rotation?: number, zIndex?: number, contentData?: { photoId?: string, cropInfo?: { shape: 'rectangle' | 'circle' | 'freehand', path?: string, x?: number, y?: number, width?: number, height?: number }, stickerId?: string, text?: string, ... } }, JWT token (in header)
+          - **Output (Success 200)**: { objectId: string, pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: string, createdAt: string, updatedAt: string }
+          - **Output (Error 400/401/403/404/500)**: { error: string, message: string }
+      - **key changes for issue #37**:
+          - Added validation for `contentData.cropInfo` if `contentData` is provided in the request.
+          - Validates `cropInfo.shape` and its dependent fields (`path`, `x`, `y`, `width`, `height`).
+          - Ensures `contentData` is stringified before saving if it's an object.

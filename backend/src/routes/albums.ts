@@ -288,6 +288,38 @@ router.put('/:albumId/objects/:objectId', authenticateToken, async (req: Request
         return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
     }
 
+    // Validate contentData if present
+    if (contentData) {
+        if (typeof contentData !== 'object' || contentData === null) {
+            return res.status(400).json({ error: 'InvalidInput', message: 'contentData must be an object.' });
+        }
+        // Additional validation for cropInfo if type is 'photo'
+        // This assumes the 'type' of the object is not changing or is known.
+        // For a more robust solution, you might need to fetch the object's type first
+        // or require 'type' to be part of the update request if contentData is being updated.
+
+        // Assuming we can access the existing object's type or it's part of the request
+        // For now, let's assume if cropInfo is present, it should be validated.
+        if (contentData.cropInfo) {
+            const { shape, path, x, y, width: cropWidth, height: cropHeight } = contentData.cropInfo;
+            if (!shape || !['rectangle', 'circle', 'freehand'].includes(shape)) {
+                return res.status(400).json({ error: 'InvalidInput', message: "Invalid cropInfo: shape must be 'rectangle', 'circle', or 'freehand'." });
+            }
+            if (shape === 'freehand' && (typeof path !== 'string' || !path.trim())) {
+                return res.status(400).json({ error: 'InvalidInput', message: 'Invalid cropInfo: path is required for freehand shape.' });
+            }
+            if (shape !== 'freehand') {
+                if (typeof x !== 'number' || typeof y !== 'number' || typeof cropWidth !== 'number' || typeof cropHeight !== 'number') {
+                    return res.status(400).json({ error: 'InvalidInput', message: 'Invalid cropInfo: x, y, width, and height must be numbers for rectangle/circle shape.' });
+                }
+                if (cropWidth <= 0 || cropHeight <= 0) {
+                    return res.status(400).json({ error: 'InvalidInput', message: 'Invalid cropInfo: width and height must be positive numbers.' });
+                }
+            }
+        }
+    }
+
+
     const albumRepository = AppDataSource.getRepository(Album);
     const objectRepository = AppDataSource.getRepository(AlbumObject);
 
@@ -323,7 +355,22 @@ router.put('/:albumId/objects/:objectId', authenticateToken, async (req: Request
         if (height !== undefined) existingObject.height = height;
         if (rotation !== undefined) existingObject.rotation = rotation;
         if (zIndex !== undefined) existingObject.z_index = zIndex;
-        if (contentData !== undefined) existingObject.content_data = contentData;
+        if (contentData !== undefined) {
+            // Ensure content_data is stored as a string if it's an object
+            if (typeof contentData === 'object') {
+                existingObject.content_data = JSON.stringify(contentData);
+            } else if (typeof contentData === 'string') {
+                // If it's already a string, ensure it's valid JSON (optional, depends on how strict you want to be)
+                try {
+                    JSON.parse(contentData);
+                    existingObject.content_data = contentData;
+                } catch (e) {
+                    return res.status(400).json({ error: 'InvalidInput', message: 'contentData, if a string, must be valid JSON.' });
+                }
+            } else {
+                return res.status(400).json({ error: 'InvalidInput', message: 'contentData must be an object or a valid JSON string.' });
+            }
+        }
 
         // Touch the updated_at timestamp
         existingObject.updated_at = new Date();
