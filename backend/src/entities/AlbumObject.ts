@@ -10,6 +10,38 @@ import {
   Check,
 } from 'typeorm';
 import { AlbumPage } from './AlbumPage';
+// content_dataの型定義
+export interface CropInfo {
+  shape: 'rectangle' | 'circle' | 'freehand';
+  path?: string; // freehandの場合
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface PhotoContentData {
+  photoId: string;
+  cropInfo?: CropInfo;
+}
+
+export interface StickerContentData {
+  stickerId: string;
+}
+
+export interface TextContentData {
+  text: string;
+  font?: string;
+  size?: number;
+  color?: string;
+  bold?: boolean;
+}
+
+export interface DrawingContentData {
+  pathData: string;
+  color?: string;
+  thickness?: number;
+}
 
 @Entity('album_objects')
 @Check(`"type" IN ('photo', 'sticker', 'text', 'drawing')`) // CHECK制約
