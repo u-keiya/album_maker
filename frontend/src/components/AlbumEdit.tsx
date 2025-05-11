@@ -36,12 +36,22 @@ interface AlbumObject {
   updatedAt: string;
 }
 
+interface CropShape {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 const AlbumEdit: React.FC = () => {
   const [album, setAlbum] = useState<Album | null>(null);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]); // アップロードされた写真のリスト (サイドバー用)
   const [albumObjects, setAlbumObjects] = useState<AlbumObject[]>([]); // 現在のページのオブジェクトリスト (キャンバス描画用)
   const [draggedPhoto, setDraggedPhoto] = useState<Photo | null>(null);
+  const [selectedObject, setSelectedObject] = useState<AlbumObject | null>(null);
+  const [cropMode, setCropMode] = useState<'shape' | 'freehand' | null>(null);
+  const [cropShape, setCropShape] = useState<CropShape | null>(null);
 
   const params = useParams();
   const albumIdFromParams = params.albumId;
@@ -243,6 +253,123 @@ const AlbumEdit: React.FC = () => {
     setDraggedPhoto(null); // ドラッグ状態をリセット
   };
 
+  const handleSelectObject = (obj: AlbumObject) => {
+    setSelectedObject(obj);
+    console.log('Object selected:', obj);
+  };
+
+  const handleCropButtonClick = () => {
+    if (selectedObject && selectedObject.type === 'photo') {
+      // TODO: Implement crop mode selection UI
+      console.log('Crop button clicked for photo:', selectedObject);
+      // 仮で 'shape' モードに設定し、cropShapeを初期化
+      setCropMode('shape');
+      setCropShape({
+        x: selectedObject.width * 0.1, // オブジェクトの左上から10%の位置
+        y: selectedObject.height * 0.1, // オブジェクトの左上から10%の位置
+        width: selectedObject.width * 0.8, // オブジェクトの幅の80%
+        height: selectedObject.height * 0.8, // オブジェクトの高さの80%
+      });
+      alert(`写真 ${selectedObject.objectId} の図形切り取りを開始します。(実装途中)`);
+    } else {
+      alert('切り取り対象の写真オブジェクトを選択してください。');
+    }
+  };
+
+  const handleConfirmCrop = async () => {
+    if (!selectedObject || !cropShape || !album?.albumId || !currentPageId) {
+      alert('切り取り対象のオブジェクトまたは切り取り範囲が指定されていません。');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('認証トークンがありません。再度ログインしてください。');
+      return;
+    }
+
+    // contentDataをパース試行、失敗時は空オブジェクト
+    let currentContentData = {};
+    try {
+      currentContentData = JSON.parse(selectedObject.contentData || '{}');
+    } catch (e) {
+      console.warn('Failed to parse existing contentData, starting fresh.', e);
+    }
+
+
+    const updatedContentData = {
+      ...currentContentData,
+      cropInfo: { // cropInfoにcropShapeの値を設定
+        type: 'rectangle', // 切り取り形状のタイプ
+        x: Math.round(cropShape.x),
+        y: Math.round(cropShape.y),
+        width: Math.round(cropShape.width),
+        height: Math.round(cropShape.height),
+      },
+    };
+
+    const objectToUpdate = {
+      ...selectedObject,
+      contentData: JSON.stringify(updatedContentData), // 再度文字列に変換
+    };
+
+    console.log('Attempting to update object with crop info:', objectToUpdate);
+
+    try {
+      const response = await fetch(`/api/albums/${album.albumId}/objects/${selectedObject.objectId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ // API仕様に合わせて、更新するフィールドのみを送信
+          positionX: selectedObject.positionX,
+          positionY: selectedObject.positionY,
+          width: selectedObject.width,
+          height: selectedObject.height,
+          rotation: selectedObject.rotation,
+          zIndex: selectedObject.zIndex,
+          contentData: objectToUpdate.contentData, // 更新されたcontentData
+        }),
+      });
+
+      if (response.ok) {
+        const updatedObjectFromServer: AlbumObject = await response.json();
+        console.log('Object updated successfully:', updatedObjectFromServer);
+
+        // フロントエンドの状態を更新
+        const updatedObjects = albumObjects.map(obj =>
+          obj.objectId === updatedObjectFromServer.objectId ? updatedObjectFromServer : obj
+        );
+        setAlbumObjects(updatedObjects);
+
+        if (album) {
+          const updatedPages = album.pages.map(page => {
+            if (page.pageId === currentPageId) {
+              return { ...page, objects: updatedObjects };
+            }
+            return page;
+          });
+          setAlbum({ ...album, pages: updatedPages });
+        }
+
+        alert('写真の切り取り情報が保存されました。');
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to update object:', response.status, errorData);
+        alert(`切り取り情報の保存に失敗しました: ${errorData.message || response.status}`);
+      }
+    } catch (error) {
+      console.error('Error updating object:', error);
+      alert('切り取り情報の保存中にエラーが発生しました。');
+    } finally {
+      // 状態をリセット
+      setCropMode(null);
+      setCropShape(null);
+      setSelectedObject(null);
+    }
+  };
+
 
   return (
     <div className="album-edit-container">
@@ -264,7 +391,7 @@ const AlbumEdit: React.FC = () => {
         <button>ダウンロード</button>
         <button>保存</button>
         <button onClick={handleAddPage}>ページ追加</button>
-        <button>画像切り取り</button>
+        <button onClick={handleCropButtonClick}>画像切り取り</button>
         <button>テキスト追加</button>
         <select><option>フォント</option></select>
         <select><option>サイズ</option></select>
@@ -274,6 +401,20 @@ const AlbumEdit: React.FC = () => {
         <select><option>太さ</option></select>
         <input type="color" />
         <button>オブジェクト選択</button>
+        {cropMode === 'shape' && selectedObject && (
+          <>
+            <button onClick={handleConfirmCrop}>長方形で確定</button>
+            <button onClick={() => { setCropMode(null); setCropShape(null); setSelectedObject(null); }}>キャンセル</button>
+            {cropShape && (
+              <div style={{ marginLeft: '10px', border: '1px solid #ccc', padding: '5px'}}>
+                <small>Crop X: <input type="number" value={cropShape.x} onChange={e => setCropShape({...cropShape, x: parseInt(e.target.value)})} style={{width: '50px'}} /></small>
+                <small>Y: <input type="number" value={cropShape.y} onChange={e => setCropShape({...cropShape, y: parseInt(e.target.value)})} style={{width: '50px'}} /></small>
+                <small>W: <input type="number" value={cropShape.width} onChange={e => setCropShape({...cropShape, width: parseInt(e.target.value)})} style={{width: '50px'}} /></small>
+                <small>H: <input type="number" value={cropShape.height} onChange={e => setCropShape({...cropShape, height: parseInt(e.target.value)})} style={{width: '50px'}}/></small>
+              </div>
+            )}
+          </>
+        )}
       </div>
       <main className="album-edit-main">
         <div
@@ -299,10 +440,33 @@ const AlbumEdit: React.FC = () => {
               return (
                 <div
                   key={obj.objectId}
-                  className="album-object photo-object"
+                  className={`album-object photo-object ${selectedObject?.objectId === obj.objectId ? 'selected' : ''}`}
                   style={commonStyle}
+                  onClick={() => handleSelectObject(obj)}
                 >
                   {photo ? <img src={photo.url} alt={photo.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '写真読込エラー'}
+                  {selectedObject?.objectId === obj.objectId && cropMode === 'shape' && (
+                    <div className="crop-overlay-shape">
+                      {cropShape && (
+                        <div
+                          className="crop-rectangle"
+                          style={{
+                            position: 'absolute',
+                            left: `${cropShape.x}px`,
+                            top: `${cropShape.y}px`,
+                            width: `${cropShape.width}px`,
+                            height: `${cropShape.height}px`,
+                            border: '2px dashed yellow',
+                            boxSizing: 'border-box',
+                            cursor: 'move', // あとでリサイズハンドルなどを追加
+                          }}
+                        >
+                          {/* リサイズハンドルなどをここに追加可能 */}
+                        </div>
+                      )}
+                      <p style={{color: 'white', background: 'rgba(0,0,0,0.5)', padding: '5px', zIndex: 1}}>図形切り取り</p>
+                    </div>
+                  )}
                 </div>
               );
             } else if (obj.type === 'sticker') {
