@@ -8,6 +8,12 @@ interface Photo {
   name: string;
 }
 
+interface Sticker {
+  id: string;
+  url: string; // または画像パス
+  name: string;
+}
+
 interface AlbumPage {
   pageId: string;
   pageNumber: number;
@@ -43,15 +49,22 @@ interface CropShape {
   height: number;
 }
 
+type DraggableItem =
+  | { type: 'photo'; data: Photo }
+  | { type: 'sticker'; data: Sticker };
+
 const AlbumEdit: React.FC = () => {
   const [album, setAlbum] = useState<Album | null>(null);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]); // アップロードされた写真のリスト (サイドバー用)
+  const [stickers, setStickers] = useState<Sticker[]>([]); // ステッカーのリスト (サイドバー用)
   const [albumObjects, setAlbumObjects] = useState<AlbumObject[]>([]); // 現在のページのオブジェクトリスト (キャンバス描画用)
-  const [draggedPhoto, setDraggedPhoto] = useState<Photo | null>(null);
+  // const [draggedPhoto, setDraggedPhoto] = useState<Photo | null>(null); // draggedItemに置き換え
+  const [draggedItem, setDraggedItem] = useState<DraggableItem | null>(null);
   const [selectedObject, setSelectedObject] = useState<AlbumObject | null>(null);
   const [cropMode, setCropMode] = useState<'shape' | 'freehand' | null>(null);
   const [cropShape, setCropShape] = useState<CropShape | null>(null);
+  const [activeTab, setActiveTab] = useState<'photos' | 'stickers'>('photos');
 
   const params = useParams();
   const albumIdFromParams = params.albumId;
@@ -97,6 +110,13 @@ const AlbumEdit: React.FC = () => {
             { id: 'photo1', url: 'https://via.placeholder.com/100x100.png?text=Photo+1', name: 'Photo 1' },
             { id: 'photo2', url: 'https://via.placeholder.com/100x100.png?text=Photo+2', name: 'Photo 2' },
             { id: 'photo3', url: 'https://via.placeholder.com/100x100.png?text=Photo+3', name: 'Photo 3' },
+          ]);
+
+          // 仮のステッカーデータ
+          setStickers([
+            { id: 'sticker1', url: 'https://via.placeholder.com/50x50.png?text=S1', name: 'Sticker 1' },
+            { id: 'sticker2', url: 'https://via.placeholder.com/50x50.png?text=S2', name: 'Sticker 2' },
+            { id: 'sticker3', url: 'https://via.placeholder.com/50x50.png?text=S3', name: 'Sticker 3' },
           ]);
 
         } catch (error) {
@@ -173,10 +193,10 @@ const AlbumEdit: React.FC = () => {
     }
   };
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, photo: Photo) => {
-    setDraggedPhoto(photo);
-    e.dataTransfer.setData('text/plain', photo.id); // ドラッグデータとしてphotoIdを設定
-    console.log('Drag started:', photo);
+  const handleItemDragStart = (e: React.DragEvent<HTMLDivElement>, item: Photo | Sticker, type: 'photo' | 'sticker') => {
+    setDraggedItem({ type, data: item });
+    e.dataTransfer.setData('application/json', JSON.stringify({ type, id: item.id }));
+    console.log(`Drag started: ${type}`, item);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -185,8 +205,8 @@ const AlbumEdit: React.FC = () => {
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (!draggedPhoto || !album?.albumId || !currentPageId) {
-      console.error('No photo dragged, albumId missing, or currentPageId missing');
+    if (!draggedItem || !album?.albumId || !currentPageId) {
+      console.error('No item dragged, albumId missing, or currentPageId missing');
       return;
     }
 
@@ -194,7 +214,7 @@ const AlbumEdit: React.FC = () => {
     const positionX = e.clientX - canvasRect.left;
     const positionY = e.clientY - canvasRect.top;
 
-    console.log('Photo dropped:', draggedPhoto, 'at', positionX, positionY);
+    console.log(`${draggedItem.type} dropped:`, draggedItem.data, 'at', positionX, positionY);
 
     const token = localStorage.getItem('token');
     if (!token) {
@@ -202,19 +222,41 @@ const AlbumEdit: React.FC = () => {
       return;
     }
 
-    const newObjectData = {
+    let newObjectDataPayload: any;
+    let objectType: 'photo' | 'sticker';
+    let itemWidth = 100;
+    let itemHeight = 100;
+
+    if (draggedItem.type === 'photo') {
+      objectType = 'photo';
+      newObjectDataPayload = {
+        photoId: draggedItem.data.id,
+        cropInfo: {},
+      };
+    } else if (draggedItem.type === 'sticker') {
+      objectType = 'sticker';
+      itemWidth = 50; // ステッカーのデフォルトサイズ
+      itemHeight = 50;
+      newObjectDataPayload = {
+        stickerId: draggedItem.data.id,
+        // sticker固有の他の情報があればここに追加
+      };
+    } else {
+      console.error('Unknown dragged item type');
+      setDraggedItem(null);
+      return;
+    }
+
+    const newObjectRequest = {
       pageId: currentPageId,
-      type: 'photo' as 'photo',
-      positionX: Math.round(positionX),
-      positionY: Math.round(positionY),
-      width: 100,
-      height: 100,
+      type: objectType,
+      positionX: Math.round(positionX - itemWidth / 2), // 中央に配置
+      positionY: Math.round(positionY - itemHeight / 2), // 中央に配置
+      width: itemWidth,
+      height: itemHeight,
       rotation: 0,
       zIndex: albumObjects.length,
-      contentData: JSON.stringify({ // contentDataを文字列に変換
-        photoId: draggedPhoto.id,
-        cropInfo: {},
-      }),
+      contentData: JSON.stringify(newObjectDataPayload),
     };
 
     try {
@@ -224,14 +266,13 @@ const AlbumEdit: React.FC = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newObjectData),
+        body: JSON.stringify(newObjectRequest),
       });
 
       if (response.ok) {
         const responseObject: AlbumObject = await response.json();
         console.log('Object added successfully:', responseObject);
         setAlbumObjects(prevObjects => [...prevObjects, responseObject]);
-        // アルバム全体のstateも更新 (オプション、状況による)
         if (album) {
           const updatedPages = album.pages.map(page => {
             if (page.pageId === currentPageId) {
@@ -244,13 +285,13 @@ const AlbumEdit: React.FC = () => {
       } else {
         const errorData = await response.json();
         console.error('Failed to add object:', response.status, errorData);
-        alert(`写真の配置に失敗しました: ${errorData.message || response.status}`);
+        alert(`${draggedItem.type === 'photo' ? '写真' : 'ステッカー'}の配置に失敗しました: ${errorData.message || response.status}`);
       }
     } catch (error) {
       console.error('Error adding object:', error);
-      alert('写真の配置中にエラーが発生しました。');
+      alert(`${draggedItem.type === 'photo' ? '写真' : 'ステッカー'}の配置中にエラーが発生しました。`);
     }
-    setDraggedPhoto(null); // ドラッグ状態をリセット
+    setDraggedItem(null); // ドラッグ状態をリセット
   };
 
   const handleSelectObject = (obj: AlbumObject) => {
@@ -370,6 +411,9 @@ const AlbumEdit: React.FC = () => {
     }
   };
 
+  const handleTabChange = (tab: 'photos' | 'stickers') => {
+    setActiveTab(tab);
+  };
 
   return (
     <div className="album-edit-container">
@@ -523,23 +567,44 @@ const AlbumEdit: React.FC = () => {
         </div>
         <aside className="album-edit-sidebar">
           <div className="sidebar-tabs">
-            <button className="active">写真</button>
-            <button>ステッカー</button>
+            <button className={activeTab === 'photos' ? 'active' : ''} onClick={() => handleTabChange('photos')}>写真</button>
+            <button className={activeTab === 'stickers' ? 'active' : ''} onClick={() => handleTabChange('stickers')}>ステッカー</button>
           </div>
           <div className="sidebar-content">
-            <p>アップロード済み写真:</p>
-            {photos.map(photo => (
-              <div
-                key={photo.id}
-                className="sidebar-photo-item"
-                draggable="true"
-                onDragStart={(e) => handleDragStart(e, photo)}
-                style={{ cursor: 'grab', marginBottom: '5px', border: '1px solid #eee', padding: '5px' }}
-              >
-                <img src={photo.url} alt={photo.name} style={{ width: '50px', height: '50px', marginRight: '10px' }} />
-                <span>{photo.name}</span>
-              </div>
-            ))}
+            {activeTab === 'photos' && (
+              <>
+                <p>アップロード済み写真:</p>
+                {photos.map(photo => (
+                  <div
+                    key={photo.id}
+                    className="sidebar-item sidebar-photo-item"
+                    draggable="true"
+                    onDragStart={(e) => handleItemDragStart(e, photo, 'photo')}
+                    style={{ cursor: 'grab', marginBottom: '5px', border: '1px solid #eee', padding: '5px', display: 'flex', alignItems: 'center' }}
+                  >
+                    <img src={photo.url} alt={photo.name} style={{ width: '50px', height: '50px', marginRight: '10px', objectFit: 'cover' }} />
+                    <span>{photo.name}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {activeTab === 'stickers' && (
+              <>
+                <p>ステッカー:</p>
+                {stickers.map(sticker => (
+                  <div
+                    key={sticker.id}
+                    className="sidebar-item sidebar-sticker-item"
+                    draggable="true"
+                    onDragStart={(e) => handleItemDragStart(e, sticker, 'sticker')}
+                    style={{ cursor: 'grab', marginBottom: '5px', border: '1px solid #eee', padding: '5px', display: 'flex', alignItems: 'center' }}
+                  >
+                    <img src={sticker.url} alt={sticker.name} style={{ width: '40px', height: '40px', marginRight: '10px', objectFit: 'contain' }} />
+                    <span>{sticker.name}</span>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </aside>
       </main>
