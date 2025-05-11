@@ -4,6 +4,7 @@ import cors from 'cors'; // Import cors
 import authRouter from './routes/auth'; // Import the auth router
 import albumsRouter from './routes/albums'; // Import the albums router
 import photosRouter from './routes/photos'; // Import the photos router
+import stickersRouter from './routes/stickers'; // Import the stickers router
 import AppDataSource from '../data-source'; // Add the missing import
 import multer from 'multer'; // Import multer for error handling
 
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use('/auth', authRouter);
 app.use('/albums', albumsRouter); // Mount the albums router
 app.use('/photos', photosRouter); // Mount the photos router
+app.use('/stickers', stickersRouter); // Mount the stickers router
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello World!');
