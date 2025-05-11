@@ -116,3 +116,36 @@
       - **input / output**:
           - **input**: styleProp: string (変更されたスタイルプロパティ名), value: any (新しい値)
           - **output**: なし (currentTextStyle stateと、albumObjects内の該当オブジェクトのcontentDataを更新してプレビューに反映)
+### File: frontend/src/components/AlbumEdit.tsx
+
+  - **classname**: AlbumEdit (React Functional Component)
+  - **function name**: handleMouseDown
+      - **short description**: Handles the mouse down event on the canvas to start freehand drawing when drawing mode is active. Initializes the drawing path.
+      - **input / output**:
+          - **input**: e: React.MouseEvent&lt;HTMLDivElement&gt;
+          - **output**: void (updates isDrawing, currentPath states)
+  - **function name**: handleMouseMove
+      - **short description**: Handles the mouse move event on the canvas to continue freehand drawing if drawing is active. Appends to the current drawing path.
+      - **input / output**:
+          - **input**: e: React.MouseEvent&lt;HTMLDivElement&gt;
+          - **output**: void (updates currentPath state)
+  - **function name**: handleMouseUp
+      - **short description**: Handles the mouse up event on the canvas to finalize the freehand drawing. Creates a new 'drawing' type album object with the path data, color, and thickness, then sends it to the backend API.
+      - **input / output**:
+          - **input**: None (uses isDrawing, drawingMode, album.albumId, currentPageId, currentPath, penColor, penThickness states)
+          - **output**: Promise&lt;void&gt; (updates server data, local album/object state, and resets drawing states)
+  - **function name**: handleMouseLeave
+      - **short description**: Handles the mouse leave event on the canvas. If currently drawing, it finalizes the drawing similar to handleMouseUp.
+      - **input / output**:
+          - **input**: None
+          - **output**: void (calls handleMouseUp if isDrawing is true)
+  - **key changes for issue #42**:
+      - Added drawing states: `drawingMode`, `isDrawing`, `currentPath`, `penColor`, `penThickness`.
+      - Added toolbar elements for toggling drawing mode, selecting pen color, and pen thickness.
+      - Implemented `handleMouseDown`, `handleMouseMove`, `handleMouseUp`, and `handleMouseLeave` event handlers on the canvas for freehand drawing.
+      - When drawing is complete (`handleMouseUp`), a new album object of type 'drawing' is created.
+      - The `contentData` for drawing objects includes `pathData` (SVG path commands relative to object's top-left), `color`, and `thickness`.
+      - The backend API `/api/albums/:albumId/objects` is called to save the new drawing object.
+      - Added rendering logic for 'drawing' type objects on the canvas using an SVG `<path>` element.
+      - Added a live preview of the current drawing path directly on the canvas.
+      - Added CSS class `.album-edit-canvas.drawing-active` to change cursor to crosshair during drawing mode.
