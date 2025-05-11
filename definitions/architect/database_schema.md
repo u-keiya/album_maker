@@ -10,6 +10,7 @@ erDiagram
     USERS ||--o{ PHOTOS  : uploads
     ALBUMS ||--o{ ALBUM_PAGES  : contains
     ALBUM_PAGES ||--o{ ALBUM_OBJECTS : contains
+    STICKERS
 
     USERS {
         UUID        user_id       PK  "ユーザーID (主キー)"
@@ -164,6 +165,74 @@ erDiagram
 *   `idx_album_objects_page_id`: `page_id` カラムに対するインデックス。
 *   `idx_album_objects_content_data` (GIN): `content_data` カラムに対するGINインデックス (JSONB内の検索が必要な場合)。
 
+
+`album_objects` テーブルの `content_data` カラムに格納されるJSONデータの構造例です。`type` カラムの値によって構造が変わります。
+
+*   **type = 'photo'**
+    ```json
+    {
+      "photoId": "UUID", // photosテーブルのphoto_id
+      "cropInfo": { // 切り抜き情報 (任意)
+        "shape": "string ('rectangle', 'circle', 'freehand')",
+        "path": "string (freehandの場合のSVGパスなど)",
+        "x": "integer", // 切り抜き矩形の左上X
+        "y": "integer", // 切り抜き矩形の左上Y
+        "width": "integer", // 切り抜き矩形の幅
+        "height": "integer" // 切り抜き矩形の高さ
+      }
+    }
+    ```
+*   **type = 'sticker'**
+    ```json
+    {
+      "stickerId": "UUID" // stickersテーブルのsticker_id (FK)
+    }
+    ```
+*   **type = 'text'**
+    ```json
+    {
+      "text": "string", // テキスト内容
+      "font": "string", // フォント名
+      "size": "integer", // フォントサイズ
+      "color": "string", // 色コード (#RRGGBB)
+      "bold": "boolean" // 太字かどうか
+    }
+    ```
+*   **type = 'drawing'**
+    ```json
+    {
+      "pathData": "string", // 描画パスデータ (例: SVG path d属性)
+      "color": "string", // 色コード (#RRGGBB)
+      "thickness": "integer" // 線の太さ
+    }
+    ```
+
+
+*   **タイムスタンプ:** `TIMESTAMP WITH TIME ZONE` を使用し、タイムゾーン情報を保持します。
+*   **主キー:** `UUID` を使用し、分散環境での衝突リスクを低減します。`gen_random_uuid()` 関数 (PostgreSQLなど) の利用を想定します。
+*   **外部キー:** `ON DELETE CASCADE` を設定し、親レコード削除時に子レコードも自動削除されるようにします（例: ユーザー削除時にそのユーザーのアルバム、写真も削除）。
+*   **インデックス:** 主要な検索キーや外部キーにはインデックスを作成し、パフォーマンスを向上させます。`content_data` の検索要件に応じてGINインデックスの追加を検討します。
+
+### 2.6. `stickers` テーブル
+
+システムで利用可能なステッカーのメタ情報を格納します。ステッカーの画像ファイル自体はAzure Blob Storageに保存されます。
+
+| カラム名           | データ型                 | 制約                                       | 説明                                   |
+| :----------------- | :----------------------- | :----------------------------------------- | :------------------------------------- |
+| `sticker_id`       | `UUID`                   | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | ステッカーID (主キー)                  |
+| `name`             | `VARCHAR(100)`           | `NOT NULL`                                 | ステッカー名                           |
+| `category`         | `VARCHAR(50)`            |                                            | カテゴリ (任意)                        |
+| `file_path`        | `TEXT`                   | `NOT NULL`                                 | ファイルパス (ストレージ上のURL/パス)    |
+| `thumbnail_path`   | `TEXT`                   |                                            | サムネイルパス (任意)                  |
+| `tags`             | `TEXT[]`                 |                                            | 検索用タグ (任意, 配列)                |
+| `created_at`       | `TIMESTAMP WITH TIME ZONE` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP`    | 作成日時                               |
+| `updated_at`       | `TIMESTAMP WITH TIME ZONE` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP`    | 更新日時                               |
+
+**インデックス:**
+*   `idx_stickers_name`: `name` カラムに対するインデックス。
+*   `idx_stickers_category`: `category` カラムに対するインデックス。
+*   `idx_stickers_tags` (GIN): `tags` カラムに対するGINインデックス (配列内検索が必要な場合)。
+
 ## 3. `content_data` (JSONB) の構造例
 
 `album_objects` テーブルの `content_data` カラムに格納されるJSONデータの構造例です。`type` カラムの値によって構造が変わります。
@@ -185,7 +254,7 @@ erDiagram
 *   **type = 'sticker'**
     ```json
     {
-      "stickerId": "string" // 事前定義されたステッカーのID
+      "stickerId": "UUID" // stickersテーブルのsticker_id (FK)
     }
     ```
 *   **type = 'text'**
@@ -211,5 +280,5 @@ erDiagram
 
 *   **タイムスタンプ:** `TIMESTAMP WITH TIME ZONE` を使用し、タイムゾーン情報を保持します。
 *   **主キー:** `UUID` を使用し、分散環境での衝突リスクを低減します。`gen_random_uuid()` 関数 (PostgreSQLなど) の利用を想定します。
-*   **外部キー:** `ON DELETE CASCADE` を設定し、親レコード削除時に子レコードも自動削除されるようにします（例: ユーザー削除時にそのユーザーのアルバム、写真も削除）。
+*   **外部キー:** `ON DELETE CASCADE` を設定し、親レコード削除時に子レコードも自動削除されるようにします（例: ユーザー削除時にそのユーザーのアルバム、写真も削除）。`album_objects` の `content_data` 内の `stickerId` は `stickers(sticker_id)` を論理的に参照しますが、JSONB内の値であるため、データベースレベルでの直接的な外部キー制約は設定が難しい場合があります。アプリケーションレベルでの整合性担保を検討します。
 *   **インデックス:** 主要な検索キーや外部キーにはインデックスを作成し、パフォーマンスを向上させます。`content_data` の検索要件に応じてGINインデックスの追加を検討します。

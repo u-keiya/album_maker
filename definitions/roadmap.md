@@ -44,7 +44,8 @@
 | 写真切り取り API 実装        | 写真の切り取り情報保存 (`api_specification.md` オブジェクト更新参照) | 中     | backend-engineer   | 未着手     | 図形、フリーハンド                     |
 | 写真切り取り 機能実装        | フロントエンドでの切り取り操作、API連携                              | 中     | frontend-engineer  | 未着手     |                                        |
 | **編集機能 (ステッカー)**    |                                                                      |        |                    |            |                                        |
-| ステッカー配置 機能実装      | サイドバーからのドラッグ＆ドロップ、オブジェクトAPI連携              | 中     | frontend-engineer  | 未着手     | ステッカー素材準備 (uxui-designer)   |
+| ステッカー管理 API 実装      | ステッカーのメタデータ管理、一覧取得API (`api_specification.md` 参照) | 中     | backend-engineer   | 着手     | Issue #58, `stickers` テーブル利用     |
+| ステッカー配置 機能実装      | サイドバーからのドラッグ＆ドロップ、オブジェクトAPI連携 (`stickerId` を使用) | 中     | frontend-engineer  | 着手     | Issue #59, ステッカー素材準備 (uxui-designer)、ステッカー一覧API利用 |
 | **編集機能 (テキスト)**      |                                                                      |        |                    |            |                                        |
 | テキスト追加/編集 機能実装   | テキストボックス配置、入力、スタイル変更、オブジェクトAPI連携        | 中     | frontend-engineer  | 未着手     |                                        |
 | **編集機能 (描画)**          |                                                                      |        |                    |            |                                        |

@@ -572,3 +572,152 @@
     *   **ステータスコード:** `500 Internal Server Error`
 
 ---
+
+## 6. ステッカー管理 (Sticker Management)
+
+ベースパス: `/stickers`
+
+### 6.1. ステッカー一覧取得
+
+*   **エンドポイント:** `GET /`
+*   **説明:** 登録されているステッカーの一覧を取得します。
+*   **認証:** 必要 (JWTトークン - 一般ユーザーも閲覧可能)
+*   **リクエストパラメータ:** なし
+*   **レスポンス (成功):**
+    *   **ステータスコード:** `200 OK`
+    *   **ボディ:**
+        ```json
+        [
+          {
+            "stickerId": "string (uuid)",
+            "name": "string",
+            "imageUrl": "string (url)",
+            "createdAt": "string (date-time)",
+            "updatedAt": "string (date-time)"
+          }
+          // ... more stickers
+        ]
+        ```
+*   **レスポンス (エラー):**
+    *   **ステータスコード:** `401 Unauthorized`
+    *   **ステータスコード:** `500 Internal Server Error`
+
+### 6.2. 特定ステッカー取得
+
+*   **エンドポイント:** `GET /{stickerId}`
+*   **説明:** 指定されたIDのステッカー情報を取得します。
+*   **認証:** 必要 (JWTトークン - 一般ユーザーも閲覧可能)
+*   **パスパラメータ:**
+    *   `stickerId` (string, uuid): 取得するステッカーのID
+*   **レスポンス (成功):**
+    *   **ステータスコード:** `200 OK`
+    *   **ボディ:**
+        ```json
+        {
+          "stickerId": "string (uuid)",
+          "name": "string",
+          "imageUrl": "string (url)",
+          "createdAt": "string (date-time)",
+          "updatedAt": "string (date-time)"
+        }
+        ```
+*   **レスポンス (エラー):**
+    *   **ステータスコード:** `401 Unauthorized`
+    *   **ステータスコード:** `404 Not Found` (指定されたステッカーIDが存在しない)
+    *   **ステータスコード:** `500 Internal Server Error`
+
+### 6.3. 新規ステッカー登録 (管理者向け)
+
+*   **エンドポイント:** `POST /`
+*   **説明:** 新しいステッカーを登録します。Azure Blob Storageへのアップロードは別途行われている前提とし、ここではメタデータを登録します。
+*   **認証:** 必要 (JWTトークン - 管理者権限が必要)
+*   **リクエストボディ:**
+    ```json
+    {
+      "name": {
+        "type": "string",
+        "description": "ステッカー名",
+        "maxLength": 100
+      },
+      "imageUrl": {
+        "type": "string",
+        "format": "url",
+        "description": "ステッカー画像のURL (Azure Blob StorageのURL)"
+      }
+    }
+    ```
+*   **レスポンス (成功):**
+    *   **ステータスコード:** `201 Created`
+    *   **ボディ:** (作成されたステッカー情報)
+        ```json
+        {
+          "stickerId": "string (uuid)",
+          "name": "string",
+          "imageUrl": "string (url)",
+          "createdAt": "string (date-time)",
+          "updatedAt": "string (date-time)"
+        }
+        ```
+*   **レスポンス (エラー):**
+    *   **ステータスコード:** `400 Bad Request` (入力バリデーションエラー)
+    *   **ステータスコード:** `401 Unauthorized`
+    *   **ステータスコード:** `403 Forbidden` (管理者権限がない)
+    *   **ステータスコード:** `500 Internal Server Error`
+
+### 6.4. ステッカー情報更新 (管理者向け)
+
+*   **エンドポイント:** `PUT /{stickerId}`
+*   **説明:** 指定されたIDのステッカー情報を更新します。
+*   **認証:** 必要 (JWTトークン - 管理者権限が必要)
+*   **パスパラメータ:**
+    *   `stickerId` (string, uuid): 更新するステッカーのID
+*   **リクエストボディ:** (更新したいプロパティのみを含む)
+    ```json
+    {
+      "name": {
+        "type": "string",
+        "description": "ステッカー名 (optional)",
+        "maxLength": 100
+      },
+      "imageUrl": {
+        "type": "string",
+        "format": "url",
+        "description": "ステッカー画像のURL (optional)"
+      }
+    }
+    ```
+*   **レスポンス (成功):**
+    *   **ステータスコード:** `200 OK`
+    *   **ボディ:** (更新後のステッカー情報)
+        ```json
+        {
+          "stickerId": "string (uuid)",
+          "name": "string",
+          "imageUrl": "string (url)",
+          "createdAt": "string (date-time)",
+          "updatedAt": "string (date-time)" // 更新された日時
+        }
+        ```
+*   **レスポンス (エラー):**
+    *   **ステータスコード:** `400 Bad Request` (入力バリデーションエラー)
+    *   **ステータスコード:** `401 Unauthorized`
+    *   **ステータスコード:** `403 Forbidden`
+    *   **ステータスコード:** `404 Not Found` (指定されたステッカーIDが存在しない)
+    *   **ステータスコード:** `500 Internal Server Error`
+
+### 6.5. ステッカー削除 (管理者向け)
+
+*   **エンドポイント:** `DELETE /{stickerId}`
+*   **説明:** 指定されたIDのステッカー情報を削除します。Azure Blob Storage上の実ファイルは別途削除が必要です。
+*   **認証:** 必要 (JWTトークン - 管理者権限が必要)
+*   **パスパラメータ:**
+    *   `stickerId` (string, uuid): 削除するステッカーのID
+*   **レスポンス (成功):**
+    *   **ステータスコード:** `204 No Content`
+*   **レスポンス (エラー):**
+    *   **ステータスコード:** `401 Unauthorized`
+    *   **ステータスコード:** `403 Forbidden`
+    *   **ステータスコード:** `404 Not Found`
+    *   **ステータスコード:** `500 Internal Server Error`
+
+---
