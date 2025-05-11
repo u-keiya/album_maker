@@ -36,3 +36,47 @@
     - **input / output**:
         - **input**: void
         - **output**: Promise<void>
+### File: backend/src/entities/Sticker.ts
+
+- **classname**: Sticker
+    - **short description**: ステッカーエンティティの定義。ステッカーID、名前、カテゴリ、ファイルパス、サムネイルパス、タグ、作成日時、更新日時を持つ。
+    - **input / output**: Not applicable for class definition.
+
+### File: backend/src/routes/stickers.ts
+
+- **function name**: GET /stickers
+    - **short description**: 登録されている全てのステッカー情報を取得する。
+    - **input / output**:
+        - **Input**: JWT token (in header)
+        - **Output (Success 200)**: Sticker[] (JSON array of sticker objects)
+        - **Output (Error 500)**: { error: "ServerError", message: "Failed to fetch stickers." }
+- **function name**: GET /stickers/:stickerId
+    - **short description**: 指定されたIDのステッカー情報を取得する。
+    - **input / output**:
+        - **Input**: stickerId (in path parameter, UUID), JWT token (in header)
+        - **Output (Success 200)**: Sticker (JSON object of the sticker)
+        - **Output (Error 404)**: { error: "NotFound", message: "Sticker not found." }
+        - **Output (Error 500)**: { error: "ServerError", message: "Failed to fetch sticker." }
+- **function name**: POST /stickers
+    - **short description**: 新しいステッカー情報を登録する (要管理者権限 - 現在はプレースホルダー)。
+    - **input / output**:
+        - **Input**: Request body { name: string, file_path: string (URL), category?: string, thumbnail_path?: string (URL), tags?: string[] }, JWT token (in header)
+        - **Output (Success 201)**: Sticker (JSON object of the created sticker)
+        - **Output (Error 400)**: { errors: [...] } (Validation errors)
+        - **Output (Error 409)**: { error: "Conflict", message: "Sticker with this name or file path might already exist." }
+        - **Output (Error 500)**: { error: "ServerError", message: "Failed to create sticker." }
+- **function name**: PUT /stickers/:stickerId
+    - **short description**: 指定されたIDのステッカー情報を更新する (要管理者権限 - 現在はプレースホルダー)。
+    - **input / output**:
+        - **Input**: stickerId (in path parameter, UUID), Request body { name?: string, file_path?: string (URL), category?: string, thumbnail_path?: string (URL), tags?: string[] }, JWT token (in header)
+        - **Output (Success 200)**: Sticker (JSON object of the updated sticker)
+        - **Output (Error 400)**: { errors: [...] } (Validation errors)
+        - **Output (Error 404)**: { error: "NotFound", message: "Sticker not found." }
+        - **Output (Error 500)**: { error: "ServerError", message: "Failed to update sticker." }
+- **function name**: DELETE /stickers/:stickerId
+    - **short description**: 指定されたIDのステッカー情報を削除する (要管理者権限 - 現在はプレースホルダー)。
+    - **input / output**:
+        - **Input**: stickerId (in path parameter, UUID), JWT token (in header)
+        - **Output (Success 204)**: No Content
+        - **Output (Error 404)**: { error: "NotFound", message: "Sticker not found." }
+        - **Output (Error 500)**: { error: "ServerError", message: "Failed to delete sticker." }
