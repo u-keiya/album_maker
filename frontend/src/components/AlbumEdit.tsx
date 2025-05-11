@@ -75,6 +75,14 @@ const AlbumEdit: React.FC = () => {
     bold: false,
   });
 
+  // Drawing states
+  const [drawingMode, setDrawingMode] = useState<boolean>(false);
+  const [isDrawing, setIsDrawing] = useState<boolean>(false);
+  const [currentPath, setCurrentPath] = useState<string>('');
+  const [penColor, setPenColor] = useState<string>('#000000');
+  const [penThickness, setPenThickness] = useState<number>(2);
+
+
   const params = useParams();
   const albumIdFromParams = params.albumId;
 
@@ -606,6 +614,119 @@ const AlbumEdit: React.FC = () => {
     }
   };
 
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!drawingMode || !currentPageId) return;
+    setIsDrawing(true);
+    const canvasRect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - canvasRect.left;
+    const y = e.clientY - canvasRect.top;
+    setCurrentPath(`M ${x} ${y}`);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || !drawingMode) return;
+    const canvasRect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - canvasRect.left;
+    const y = e.clientY - canvasRect.top;
+    setCurrentPath(prevPath => `${prevPath} L ${x} ${y}`);
+  };
+
+  const handleMouseUp = async () => {
+    if (!isDrawing || !drawingMode || !album?.albumId || !currentPageId || !currentPath) {
+      setIsDrawing(false);
+      return;
+    }
+    setIsDrawing(false);
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('認証トークンがありません。再度ログインしてください。');
+      return;
+    }
+
+    // Determine bounds of the drawing to set width and height
+    // This is a simplified approach; a more robust method would parse the SVG path.
+    const points = currentPath.split(/[ML]/).filter(p => p.trim() !== '').map(p => {
+      const [x, y] = p.trim().split(' ').map(Number);
+      return { x, y };
+    });
+
+    if (points.length === 0) {
+        setCurrentPath('');
+        return;
+    }
+
+    const minX = Math.min(...points.map(p => p.x));
+    const minY = Math.min(...points.map(p => p.y));
+    const maxX = Math.max(...points.map(p => p.x));
+    const maxY = Math.max(...points.map(p => p.y));
+
+    const drawingWidth = Math.max(1, maxX - minX); // Ensure width is at least 1
+    const drawingHeight = Math.max(1, maxY - minY); // Ensure height is at least 1
+
+    // Adjust path coordinates to be relative to the object's top-left corner
+    const relativePath = points.map(p => ({ x: p.x - minX, y: p.y - minY }))
+        .reduce((acc, p, i) => acc + (i === 0 ? 'M' : 'L') + ` ${p.x} ${p.y}`, '');
+
+
+    const newDrawingObjectRequest = {
+      pageId: currentPageId,
+      type: 'drawing' as 'drawing',
+      positionX: Math.round(minX),
+      positionY: Math.round(minY),
+      width: Math.round(drawingWidth),
+      height: Math.round(drawingHeight),
+      rotation: 0,
+      zIndex: albumObjects.length,
+      contentData: JSON.stringify({
+        pathData: relativePath, // Store the relative path
+        color: penColor,
+        thickness: penThickness,
+        originalPath: currentPath, // Optionally store original path for debugging or re-editing
+      }),
+    };
+
+    try {
+      const response = await fetch(`/api/albums/${album.albumId}/objects`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newDrawingObjectRequest),
+      });
+
+      if (response.ok) {
+        const newObject: AlbumObject = await response.json();
+        setAlbumObjects(prev => [...prev, newObject]);
+        if (album) {
+          const updatedPages = album.pages.map(page => {
+            if (page.pageId === currentPageId) {
+              return { ...page, objects: [...page.objects, newObject] };
+            }
+            return page;
+          });
+          setAlbum({ ...album, pages: updatedPages });
+        }
+        console.log('Drawing object added:', newObject);
+      } else {
+        const errorData = await response.json();
+        alert(`描画オブジェクトの追加に失敗しました: ${errorData.message || response.status}`);
+      }
+    } catch (error) {
+      console.error('Error adding drawing object:', error);
+      alert('描画オブジェクトの追加中にエラーが発生しました。');
+    }
+    setCurrentPath(''); // Reset path for next drawing
+  };
+
+  const handleMouseLeave = () => {
+    if (isDrawing) {
+      // If mouse leaves canvas while drawing, treat as mouse up to save current path
+      handleMouseUp();
+    }
+  };
+
 
   return (
     <div className="album-edit-container">
@@ -638,9 +759,14 @@ const AlbumEdit: React.FC = () => {
         <input type="number" value={currentTextStyle.size} onChange={(e) => handleTextStyleChange('size', parseInt(e.target.value))} disabled={!isTextEditing || selectedObject?.type !== 'text'} style={{width: '60px'}} />
         <input type="color" value={currentTextStyle.color} onChange={(e) => handleTextStyleChange('color', e.target.value)} disabled={!isTextEditing || selectedObject?.type !== 'text'} />
         <button onClick={() => handleTextStyleChange('bold', !currentTextStyle.bold)} disabled={!isTextEditing || selectedObject?.type !== 'text'} style={{ fontWeight: currentTextStyle.bold ? 'bold' : 'normal' }}>太字</button>
-        <button>ペン</button>
-        <select><option>太さ</option></select>
-        <input type="color" />
+        <button onClick={() => setDrawingMode(!drawingMode)} style={{ backgroundColor: drawingMode ? 'lightblue' : ''}}>ペン</button>
+        <select value={penThickness} onChange={(e) => setPenThickness(Number(e.target.value))} disabled={!drawingMode}>
+          <option value="1">極細</option>
+          <option value="2">細</option>
+          <option value="5">中</option>
+          <option value="10">太</option>
+        </select>
+        <input type="color" value={penColor} onChange={(e) => setPenColor(e.target.value)} disabled={!drawingMode} />
         <button>オブジェクト選択</button>
         {cropMode === 'shape' && selectedObject && (
           <>
@@ -659,9 +785,14 @@ const AlbumEdit: React.FC = () => {
       </div>
       <main className="album-edit-main">
         <div
-          className="album-edit-canvas"
+          className={`album-edit-canvas ${drawingMode ? 'drawing-active' : ''}`}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          style={{ cursor: drawingMode ? 'crosshair' : 'default' }}
         >
           {/* 配置されたオブジェクトを描画 */}
           {albumObjects.map(obj => {
@@ -776,17 +907,46 @@ const AlbumEdit: React.FC = () => {
                 <div
                   key={obj.objectId}
                   className="album-object drawing-object"
-                  style={{ ...commonStyle, border: `2px solid ${obj.contentData.color || 'red'}` /* 仮のスタイル */ }}
+                  style={{
+                    ...commonStyle,
+                    // Drawings are rendered via SVG within this div
+                    // border: '1px dashed green', // Optional: for visualizing bounds
+                    overflow: 'visible', // Ensure SVG path isn't clipped by div bounds if path goes outside
+                  }}
                 >
-                  Drawing
-                  {/* <svg width="100%" height="100%" viewBox={`0 0 ${obj.width} ${obj.height}`}>
-                    <path d={obj.contentData.pathData} stroke={obj.contentData.color} strokeWidth={obj.contentData.thickness} fill="none" />
-                  </svg> */}
+                  <svg
+                    width={obj.width} // SVG takes full width of the object
+                    height={obj.height} // SVG takes full height of the object
+                    viewBox={`0 0 ${obj.width} ${obj.height}`} // ViewBox matches object dimensions
+                    style={{ position: 'absolute', top: 0, left: 0 }}
+                  >
+                    <path
+                      d={obj.contentData.pathData}
+                      stroke={obj.contentData.color || '#000000'}
+                      strokeWidth={obj.contentData.thickness || 2}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </div>
               );
             }
             return null; // 未知のタイプは描画しない
           })}
+          {/* Live drawing preview */}
+          {isDrawing && currentPath && (
+            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+              <path
+                d={currentPath}
+                stroke={penColor}
+                strokeWidth={penThickness}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </div>
         <aside className="album-edit-sidebar">
           <div className="sidebar-tabs">
