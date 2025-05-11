@@ -18,9 +18,18 @@ export class ApplyDatabaseSchema1746517213608 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "album_pages" ADD CONSTRAINT "FK_ba1cc727c0d1166104ecc94dccf" FOREIGN KEY ("album_id") REFERENCES "albums"("album_id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "albums" ADD CONSTRAINT "FK_2c6a2dfb05cb87cc38e2a8b9dc1" FOREIGN KEY ("user_id") REFERENCES "users"("user_id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "photos" ADD CONSTRAINT "FK_c4404a2ee605249b508c623e68f" FOREIGN KEY ("user_id") REFERENCES "users"("user_id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+
+        // Create stickers table
+        await queryRunner.query(`CREATE TABLE "stickers" ("sticker_id" uniqueidentifier NOT NULL CONSTRAINT "DF_stickers_sticker_id" DEFAULT NEWSEQUENTIALID(), "name" nvarchar(100) NOT NULL, "category" nvarchar(50), "file_path" nvarchar(MAX) NOT NULL, "thumbnail_path" nvarchar(MAX), "tags" nvarchar(MAX), "created_at" datetimeoffset NOT NULL CONSTRAINT "DF_stickers_created_at" DEFAULT getdate(), "updated_at" datetimeoffset NOT NULL CONSTRAINT "DF_stickers_updated_at" DEFAULT getdate(), CONSTRAINT "PK_stickers_sticker_id" PRIMARY KEY ("sticker_id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_stickers_name" ON "stickers" ("name")`);
+        await queryRunner.query(`CREATE INDEX "IDX_stickers_category" ON "stickers" ("category")`);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`DROP INDEX "IDX_stickers_category" ON "stickers"`);
+        await queryRunner.query(`DROP INDEX "IDX_stickers_name" ON "stickers"`);
+        await queryRunner.query(`DROP TABLE "stickers"`);
+
         await queryRunner.query(`ALTER TABLE "photos" DROP CONSTRAINT "FK_c4404a2ee605249b508c623e68f"`);
         await queryRunner.query(`ALTER TABLE "albums" DROP CONSTRAINT "FK_2c6a2dfb05cb87cc38e2a8b9dc1"`);
         await queryRunner.query(`ALTER TABLE "album_pages" DROP CONSTRAINT "FK_ba1cc727c0d1166104ecc94dccf"`);
