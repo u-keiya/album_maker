@@ -10,7 +10,7 @@ interface Photo {
 
 interface Sticker {
   id: string;
-  url: string; // または画像パス
+  imageUrl: string; // または画像パス
   name: string;
 }
 
@@ -121,28 +121,22 @@ const AlbumEdit: React.FC = () => {
             setAlbumObjects(initialPageObjects);
           }
 
-          // アップロード済み写真リストの取得 (仮。実際には専用APIを叩くか、アルバム情報に含まれる)
-          // この部分は既存の仮データセットアップを流用しつつ、API連携の準備としてコメントアウト
-          // const photosResponse = await fetch(`/api/photos?userId=${/* userId */} `, { // userIdの取得方法に注意
-          //   headers: { 'Authorization': `Bearer ${token}` },
-          // });
-          // if (!photosResponse.ok) {
-          //   throw new Error(`写真リストの取得に失敗しました: ${photosResponse.status}`);
-          // }
-          // const photosData: Photo[] = await photosResponse.json();
-          // setPhotos(photosData);
-          setPhotos([ // 仮の写真データ
+          // アップロード済み写真リストの取得 (仮)
+          setPhotos([
             { id: 'photo1', url: 'https://via.placeholder.com/100x100.png?text=Photo+1', name: 'Photo 1' },
             { id: 'photo2', url: 'https://via.placeholder.com/100x100.png?text=Photo+2', name: 'Photo 2' },
             { id: 'photo3', url: 'https://via.placeholder.com/100x100.png?text=Photo+3', name: 'Photo 3' },
           ]);
 
-          // 仮のステッカーデータ
-          setStickers([
-            { id: 'sticker1', url: 'https://via.placeholder.com/50x50.png?text=S1', name: 'Sticker 1' },
-            { id: 'sticker2', url: 'https://via.placeholder.com/50x50.png?text=S2', name: 'Sticker 2' },
-            { id: 'sticker3', url: 'https://via.placeholder.com/50x50.png?text=S3', name: 'Sticker 3' },
-          ]);
+          // ステッカーリストの取得
+          const stickersResponse = await fetch(`/api/stickers`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (!stickersResponse.ok) {
+            throw new Error(`ステッカーリストの取得に失敗しました: ${stickersResponse.status}`);
+          }
+          const stickersData: Sticker[] = await stickersResponse.json();
+          setStickers(stickersData);
 
         } catch (error) {
           console.error('Error fetching album data:', error);
@@ -218,10 +212,14 @@ const AlbumEdit: React.FC = () => {
     }
   };
 
-  const handleItemDragStart = (e: React.DragEvent<HTMLDivElement>, item: Photo | Sticker, type: 'photo' | 'sticker') => {
-    setDraggedItem({ type, data: item });
-    e.dataTransfer.setData('application/json', JSON.stringify({ type, id: item.id }));
-    console.log(`Drag started: ${type}`, item);
+  const handleItemDragStart = (e: React.DragEvent<HTMLDivElement>, item: Photo | Sticker, itemType: 'photo' | 'sticker') => {
+    if (itemType === 'photo') {
+      setDraggedItem({ type: 'photo', data: item as Photo });
+    } else if (itemType === 'sticker') {
+      setDraggedItem({ type: 'sticker', data: item as Sticker });
+    }
+    e.dataTransfer.setData('application/json', JSON.stringify({ type: itemType, id: item.id }));
+    console.log(`Drag started: ${itemType}`, item);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -1160,7 +1158,7 @@ const AlbumEdit: React.FC = () => {
                     return photo ? <img src={photo.url} alt={photo.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '写真読込エラー';
                 } else if (obj.type === 'sticker') {
                     const sticker = stickers.find(s => s.id === obj.contentData.stickerId);
-                    return sticker ? <img src={sticker.url} alt={sticker.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : 'ステッカー読込エラー';
+                    return sticker ? <img src={sticker.imageUrl} alt={sticker.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : 'ステッカー読込エラー';
                 } else if (obj.type === 'text') {
                     return (
                         <div style={{
@@ -1320,7 +1318,7 @@ const AlbumEdit: React.FC = () => {
                     onDragStart={(e) => handleItemDragStart(e, sticker, 'sticker')}
                     style={{ cursor: 'grab', marginBottom: '5px', border: '1px solid #eee', padding: '5px', display: 'flex', alignItems: 'center' }}
                   >
-                    <img src={sticker.url} alt={sticker.name} style={{ width: '40px', height: '40px', marginRight: '10px', objectFit: 'contain' }} />
+                    <img src={sticker.imageUrl} alt={sticker.name} style={{ width: '40px', height: '40px', marginRight: '10px', objectFit: 'contain' }} />
                     <span>{sticker.name}</span>
                   </div>
                 ))}
