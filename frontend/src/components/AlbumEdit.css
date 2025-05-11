@@ -115,3 +115,111 @@
   border: 2px dashed yellow;
   box-sizing: border-box;
 }
+.album-object {
+  cursor: grab;
+  user-select: none; /* Prevent text selection during drag */
+}
+
+.album-object.selected {
+  border: 2px solid blue !important; /* Ensure this overrides other borders */
+  box-shadow: 0 0 5px blue;
+}
+
+.album-edit-canvas.drawing-active {
+  cursor: crosshair;
+}
+
+.album-edit-canvas.grabbing,
+.album-edit-canvas .album-object.selected {
+  cursor: grabbing;
+}
+
+/* Specific object types might need slight adjustments if the default border is too obtrusive */
+.photo-object.selected,
+.sticker-object.selected,
+.drawing-object.selected {
+  /* The generic .album-object.selected should cover this,
+     but you can add specific overrides if needed */
+}
+
+.text-object.selected {
+  /* Text objects might have their own focus/selection styling,
+     ensure it's compatible or overridden by .selected */
+  border: 2px solid dodgerblue !important;
+}
+.resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: blue;
+  border: 1px solid white;
+  z-index: 10; /* Ensure handles are above the object content */
+}
+
+.resize-handle.topLeft {
+  top: -5px;
+  left: -5px;
+  cursor: nwse-resize;
+}
+
+.resize-handle.topRight {
+  top: -5px;
+  right: -5px;
+  cursor: nesw-resize;
+}
+
+.resize-handle.bottomLeft {
+  bottom: -5px;
+  left: -5px;
+  cursor: nesw-resize;
+}
+
+.resize-handle.bottomRight {
+  bottom: -5px;
+  right: -5px;
+  cursor: nwse-resize;
+}
+
+/* Styles for the delete button on a selected object */
+.delete-object-button {
+  position: absolute;
+  top: -30px; /* Adjust as needed to position above the object */
+  right: -10px; /* Adjust as needed */
+  background-color: red;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 11; /* Higher than resize handles */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.delete-object-button:hover {
+  background-color: darkred;
+}
+.rotate-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-color: green; /* Or any color to make it visible */
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab; /* Or a specific rotation cursor like 'url(cursor-rotate.png), auto' */
+  z-index: 12; /* Ensure it's above other elements but potentially below a context menu */
+  /* Position it above the top-center of the object, adjust as needed */
+  top: -30px; /* Distance from the top edge of the object */
+  left: calc(50% - 10px); /* Center horizontally */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.rotate-handle:hover {
+  background-color: darkgreen;
+}
