@@ -93,3 +93,21 @@
   flex-grow: 1;
   overflow-y: auto; /* サイドバーコンテンツが多い場合にスクロール */
 }
+.album-object.selected {
+  outline: 2px solid blue;
+  box-shadow: 0 0 10px rgba(0, 0, 255, 0.5);
+}
+
+.crop-overlay-shape {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px dashed yellow;
+  box-sizing: border-box;
+}
