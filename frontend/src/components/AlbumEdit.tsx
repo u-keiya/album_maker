@@ -62,6 +62,14 @@ const AlbumEdit: React.FC = () => {
   // const [draggedPhoto, setDraggedPhoto] = useState<Photo | null>(null); // draggedItemに置き換え
   const [draggedItem, setDraggedItem] = useState<DraggableItem | null>(null);
   const [selectedObject, setSelectedObject] = useState<AlbumObject | null>(null);
+  const [isDraggingObject, setIsDraggingObject] = useState<boolean>(false);
+  const [dragStartOffset, setDragStartOffset] = useState<{ x: number; y: number } | null>(null);
+  const [isResizingObject, setIsResizingObject] = useState<boolean>(false);
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null); //例: 'topLeft', 'bottomRight'
+  const [objectInitialState, setObjectInitialState] = useState<AlbumObject | null>(null); // リサイズ開始時のオブジェクトの状態
+  const [isRotatingObject, setIsRotatingObject] = useState<boolean>(false);
+  const [rotationStartAngle, setRotationStartAngle] = useState<number>(0);
+  const [objectCenter, setObjectCenter] = useState<{ x: number; y: number } | null>(null);
   const [cropMode, setCropMode] = useState<'shape' | 'freehand' | null>(null);
   const [cropShape, setCropShape] = useState<CropShape | null>(null);
   const [activeTab, setActiveTab] = useState<'photos' | 'stickers'>('photos');
@@ -614,8 +622,112 @@ const AlbumEdit: React.FC = () => {
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!drawingMode || !currentPageId) return;
+  // Function to update object on the server
+  const updateObjectOnServer = async (albumId: string, objectId: string, updatedFields: Partial<AlbumObject>) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('認証トークンがありません。');
+      return null;
+    }
+
+    const payload = { ...updatedFields };
+    // Ensure contentData is stringified if it's an object
+    if (typeof payload.contentData === 'object' && payload.contentData !== null) {
+      payload.contentData = JSON.stringify(payload.contentData);
+    } else if (payload.contentData === undefined && updatedFields.hasOwnProperty('contentData')) {
+      // If contentData was explicitly set to undefined (e.g. to remove it, though API might not support this)
+      // or if it was an empty object that stringified to "{}" and you prefer to send null or not send it.
+      // For now, if it's undefined in updatedFields, it won't be in payload unless explicitly handled.
+      // If API expects contentData to always be present, ensure it's at least an empty string or "{}".
+    }
+
+
+    try {
+      const response = await fetch(`/api/albums/${albumId}/objects/${objectId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload), // Send only the updated fields
+      });
+      if (response.ok) {
+        const updatedObjectFromServer: AlbumObject = await response.json();
+        console.log('Object updated successfully on server:', updatedObjectFromServer);
+        return updatedObjectFromServer;
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to update object on server:', response.status, errorData);
+        alert(`オブジェクトの更新に失敗しました: ${errorData.message || response.status}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error updating object on server:', error);
+      alert('オブジェクトの更新中にサーバーエラーが発生しました。');
+      return null;
+    }
+  };
+
+  const handleObjectMouseDown = (e: React.MouseEvent<HTMLDivElement>, obj: AlbumObject) => {
+    if (drawingMode || isResizingObject) return; // Do not select if drawing or already resizing
+
+    setSelectedObject(obj);
+    setIsDraggingObject(true);
+    setObjectInitialState(obj); // Store initial state for potential revert or precise calculation
+    const canvasRect = (e.currentTarget.closest('.album-edit-canvas') as HTMLDivElement)?.getBoundingClientRect();
+    if (!canvasRect) return;
+
+    const clickXInCanvas = e.clientX - canvasRect.left;
+    const clickYInCanvas = e.clientY - canvasRect.top;
+
+    setDragStartOffset({
+      x: clickXInCanvas - obj.positionX,
+      y: clickYInCanvas - obj.positionY,
+    });
+    e.stopPropagation(); // Prevent canvas mousedown from deselecting
+    console.log('Object selected for dragging:', obj);
+  };
+
+  const handleObjectResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>, handle: string) => {
+    if (drawingMode || !selectedObject || isRotatingObject) return;
+    e.stopPropagation(); // Prevent object drag
+    setIsResizingObject(true);
+    setResizeHandle(handle);
+    setObjectInitialState(selectedObject); // Store initial state for resizing
+    console.log(`Resize started on handle: ${handle} for object:`, selectedObject);
+  };
+
+  const handleObjectRotationMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (drawingMode || !selectedObject || isResizingObject) return;
+    e.stopPropagation(); // Prevent object drag or resize
+    setIsRotatingObject(true);
+    setObjectInitialState(selectedObject); // Store initial state for rotation
+
+    const canvasRect = (e.currentTarget.closest('.album-edit-canvas') as HTMLDivElement)?.getBoundingClientRect();
+    if (!canvasRect || !selectedObject) return;
+
+    const centerX = selectedObject.positionX + selectedObject.width / 2;
+    const centerY = selectedObject.positionY + selectedObject.height / 2;
+    setObjectCenter({ x: centerX, y: centerY });
+
+    const mouseX = e.clientX - canvasRect.left;
+    const mouseY = e.clientY - canvasRect.top;
+
+    const angleRad = Math.atan2(mouseY - centerY, mouseX - centerX);
+    const angleDeg = angleRad * (180 / Math.PI);
+    // rotationStartAngle is the angle of the mouse relative to the object's current rotation.
+    // This means, if the object is already rotated by R, and mouse is at M degrees in canvas space,
+    // the initial "grab" angle relative to the object's rotated frame is M - R.
+    // When calculating new rotation, it will be currentMouseAngle - this_offset.
+    setRotationStartAngle(angleDeg - selectedObject.rotation);
+
+
+    console.log('Rotation started for object:', selectedObject, `Start angle offset: ${angleDeg - selectedObject.rotation}`);
+  };
+
+
+  const handleDrawingMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!drawingMode || !currentPageId || isResizingObject || isRotatingObject) return;
     setIsDrawing(true);
     const canvasRect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - canvasRect.left;
@@ -623,17 +735,101 @@ const AlbumEdit: React.FC = () => {
     setCurrentPath(`M ${x} ${y}`);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDrawing || !drawingMode) return;
-    const canvasRect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - canvasRect.left;
-    const y = e.clientY - canvasRect.top;
-    setCurrentPath(prevPath => `${prevPath} L ${x} ${y}`);
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (drawingMode && isDrawing) {
+      const canvasRect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - canvasRect.left;
+      const y = e.clientY - canvasRect.top;
+      setCurrentPath(prevPath => `${prevPath} L ${x} ${y}`);
+      return;
+    }
+
+    if (isDraggingObject && selectedObject && dragStartOffset && album) {
+      const canvasRect = e.currentTarget.getBoundingClientRect();
+      const newX = e.clientX - canvasRect.left - dragStartOffset.x;
+      const newY = e.clientY - canvasRect.top - dragStartOffset.y;
+
+      setAlbumObjects(prevObjects =>
+        prevObjects.map(obj =>
+          obj.objectId === selectedObject.objectId
+            ? { ...obj, positionX: newX, positionY: newY }
+            : obj
+        )
+      );
+    } else if (isResizingObject && selectedObject && resizeHandle && album && objectInitialState) {
+        const canvasRect = e.currentTarget.getBoundingClientRect();
+        const mouseX = e.clientX - canvasRect.left;
+        const mouseY = e.clientY - canvasRect.top;
+
+        let { positionX, positionY, width, height } = objectInitialState; // Start from initial state for calculations
+        const originalRight = objectInitialState.positionX + objectInitialState.width;
+        const originalBottom = objectInitialState.positionY + objectInitialState.height;
+
+        let newPositionX = positionX;
+        let newPositionY = positionY;
+        let newWidth = width;
+        let newHeight = height;
+
+        switch (resizeHandle) {
+            case 'topLeft':
+                newWidth = originalRight - mouseX;
+                newHeight = originalBottom - mouseY;
+                newPositionX = mouseX;
+                newPositionY = mouseY;
+                break;
+            case 'topRight':
+                newWidth = mouseX - positionX;
+                newHeight = originalBottom - mouseY;
+                newPositionY = mouseY;
+                break;
+            case 'bottomLeft':
+                newWidth = originalRight - mouseX;
+                newHeight = mouseY - positionY;
+                newPositionX = mouseX;
+                break;
+            case 'bottomRight':
+                newWidth = mouseX - positionX;
+                newHeight = mouseY - positionY;
+                break;
+        }
+        // Prevent negative width/height or ensure minimum size
+        newWidth = Math.max(20, newWidth);
+        newHeight = Math.max(20, newHeight);
+
+        // Adjust position if width/height change affected it from left/top
+        if (resizeHandle.includes('Left') && newWidth !== width) newPositionX = originalRight - newWidth;
+        if (resizeHandle.includes('Top') && newHeight !== height) newPositionY = originalBottom - newHeight;
+
+
+        setAlbumObjects(prevObjects =>
+            prevObjects.map(obj =>
+                obj.objectId === selectedObject.objectId
+                    ? { ...obj, positionX: newPositionX, positionY: newPositionY, width: newWidth, height: newHeight }
+                    : obj
+            )
+        );
+    } else if (isRotatingObject && selectedObject && objectCenter && album) {
+        const canvasRect = e.currentTarget.getBoundingClientRect();
+        const mouseX = e.clientX - canvasRect.left;
+        const mouseY = e.clientY - canvasRect.top;
+
+        const angleRad = Math.atan2(mouseY - objectCenter.y, mouseX - objectCenter.x);
+        let newRotation = angleRad * (180 / Math.PI) - rotationStartAngle;
+        newRotation = (newRotation % 360 + 360) % 360; // Normalize to 0-360
+
+        setAlbumObjects(prevObjects =>
+            prevObjects.map(obj =>
+                obj.objectId === selectedObject.objectId
+                    ? { ...obj, rotation: newRotation }
+                    : obj
+            )
+        );
+    }
   };
 
-  const handleMouseUp = async () => {
+  const handleDrawingMouseUp = async () => {
     if (!isDrawing || !drawingMode || !album?.albumId || !currentPageId || !currentPath) {
-      setIsDrawing(false);
+      setIsDrawing(false); // Ensure isDrawing is reset even if we return early
       return;
     }
     setIsDrawing(false);
@@ -644,8 +840,6 @@ const AlbumEdit: React.FC = () => {
       return;
     }
 
-    // Determine bounds of the drawing to set width and height
-    // This is a simplified approach; a more robust method would parse the SVG path.
     const points = currentPath.split(/[ML]/).filter(p => p.trim() !== '').map(p => {
       const [x, y] = p.trim().split(' ').map(Number);
       return { x, y };
@@ -661,13 +855,11 @@ const AlbumEdit: React.FC = () => {
     const maxX = Math.max(...points.map(p => p.x));
     const maxY = Math.max(...points.map(p => p.y));
 
-    const drawingWidth = Math.max(1, maxX - minX); // Ensure width is at least 1
-    const drawingHeight = Math.max(1, maxY - minY); // Ensure height is at least 1
+    const drawingWidth = Math.max(1, maxX - minX);
+    const drawingHeight = Math.max(1, maxY - minY);
 
-    // Adjust path coordinates to be relative to the object's top-left corner
     const relativePath = points.map(p => ({ x: p.x - minX, y: p.y - minY }))
         .reduce((acc, p, i) => acc + (i === 0 ? 'M' : 'L') + ` ${p.x} ${p.y}`, '');
-
 
     const newDrawingObjectRequest = {
       pageId: currentPageId,
@@ -679,10 +871,10 @@ const AlbumEdit: React.FC = () => {
       rotation: 0,
       zIndex: albumObjects.length,
       contentData: JSON.stringify({
-        pathData: relativePath, // Store the relative path
+        pathData: relativePath,
         color: penColor,
         thickness: penThickness,
-        originalPath: currentPath, // Optionally store original path for debugging or re-editing
+        originalPath: currentPath,
       }),
     };
 
@@ -717,13 +909,165 @@ const AlbumEdit: React.FC = () => {
       console.error('Error adding drawing object:', error);
       alert('描画オブジェクトの追加中にエラーが発生しました。');
     }
-    setCurrentPath(''); // Reset path for next drawing
+    setCurrentPath('');
   };
 
-  const handleMouseLeave = () => {
-    if (isDrawing) {
-      // If mouse leaves canvas while drawing, treat as mouse up to save current path
-      handleMouseUp();
+
+  const handleCanvasMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
+    let updatedObjectFromServer: AlbumObject | null = null;
+    let actionTaken = false;
+
+    if (drawingMode && isDrawing) {
+       await handleDrawingMouseUp();
+       actionTaken = true;
+    } else if (isDraggingObject && selectedObject && album && album.albumId && currentPageId) {
+      actionTaken = true;
+      const currentObjectState = albumObjects.find(obj => obj.objectId === selectedObject.objectId);
+      if (currentObjectState) {
+        const payloadForApi: Partial<AlbumObject> = { positionX: currentObjectState.positionX, positionY: currentObjectState.positionY };
+        updatedObjectFromServer = await updateObjectOnServer(album.albumId, selectedObject.objectId, payloadForApi);
+      } else {
+        console.error("Consistency error: selected object not found during drag mouse up.");
+      }
+    } else if (isResizingObject && selectedObject && album && album.albumId && currentPageId) {
+      actionTaken = true;
+      const currentObjectState = albumObjects.find(obj => obj.objectId === selectedObject.objectId);
+      if (currentObjectState) {
+        const payloadForApi: Partial<AlbumObject> = {
+            positionX: currentObjectState.positionX, positionY: currentObjectState.positionY,
+            width: currentObjectState.width, height: currentObjectState.height,
+        };
+        updatedObjectFromServer = await updateObjectOnServer(album.albumId, selectedObject.objectId, payloadForApi);
+      } else {
+        console.error("Consistency error: selected object not found during resize mouse up.");
+      }
+    } else if (isRotatingObject && selectedObject && album && album.albumId && currentPageId) {
+      actionTaken = true;
+      const currentObjectState = albumObjects.find(obj => obj.objectId === selectedObject.objectId);
+      if (currentObjectState) {
+        const payloadForApi: Partial<AlbumObject> = { rotation: currentObjectState.rotation };
+        updatedObjectFromServer = await updateObjectOnServer(album.albumId, selectedObject.objectId, payloadForApi);
+      } else {
+        console.error("Consistency error: selected object not found during rotation mouse up.");
+      }
+    }
+
+    if (actionTaken && updatedObjectFromServer && album) {
+        const finalUpdatedObjects = albumObjects.map(obj => obj.objectId === updatedObjectFromServer!.objectId ? updatedObjectFromServer! : obj);
+        setAlbumObjects(finalUpdatedObjects);
+        const updatedPages = album.pages.map(page => {
+            if (page.pageId === currentPageId) return { ...page, objects: finalUpdatedObjects };
+            return page;
+        });
+        setAlbum({ ...album, pages: updatedPages });
+    } else if (actionTaken && !updatedObjectFromServer && objectInitialState && album) {
+        // Revert to initial state if server update failed
+        console.warn("Server update failed, reverting object to its initial state before the operation.");
+        const revertedObjects = albumObjects.map(obj => obj.objectId === objectInitialState.objectId ? objectInitialState : obj);
+        setAlbumObjects(revertedObjects);
+    }
+
+
+    setIsDraggingObject(false);
+    setDragStartOffset(null);
+    setIsResizingObject(false);
+    setResizeHandle(null);
+    setIsRotatingObject(false);
+    setRotationStartAngle(0);
+    setObjectCenter(null);
+    setObjectInitialState(null); // Clear initial state after operation
+    // Do not deselect object on mouse up, allow further interaction unless no action was taken
+    // if (!actionTaken && e.target === e.currentTarget) { // If click was on canvas and no op, deselect
+    //    setSelectedObject(null);
+    // }
+  };
+
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (drawingMode) {
+      handleDrawingMouseDown(e);
+      return;
+    }
+    // If click is on canvas background (not on an object that stops propagation, or a resize/rotate handle)
+    if (e.target === e.currentTarget) {
+      setSelectedObject(null);
+      setIsTextEditing(false);
+      setCurrentTextObjectId(null);
+    }
+  };
+
+  const handleDeleteObject = async () => {
+    if (!selectedObject || !album?.albumId || !currentPageId) {
+      alert('削除するオブジェクトが選択されていません。');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('認証トークンがありません。');
+      return;
+    }
+
+    if (!window.confirm(`オブジェクト「${selectedObject.objectId.substring(0,8)}...」を削除しますか？`)) {
+        return;
+    }
+
+    try {
+      const response = await fetch(`/api/albums/${album.albumId}/objects/${selectedObject.objectId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        console.log('Object deleted successfully:', selectedObject.objectId);
+        const updatedObjects = albumObjects.filter(obj => obj.objectId !== selectedObject.objectId);
+        setAlbumObjects(updatedObjects);
+        if (album) {
+          const updatedPages = album.pages.map(page => {
+            if (page.pageId === currentPageId) {
+              return { ...page, objects: updatedObjects };
+            }
+            return page;
+          });
+          setAlbum({ ...album, pages: updatedPages });
+        }
+        setSelectedObject(null); // Deselect after deletion
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to delete object:', response.status, errorData);
+        alert(`オブジェクトの削除に失敗しました: ${errorData.message || response.status}`);
+      }
+    } catch (error) {
+      console.error('Error deleting object:', error);
+      alert('オブジェクトの削除中にエラーが発生しました。');
+    }
+  };
+
+
+  const handleMouseLeaveCanvas = () => {
+    if (drawingMode && isDrawing) {
+      handleDrawingMouseUp(); // Treat as mouse up to save current path
+    }
+    // If dragging, resizing or rotating an object and mouse leaves canvas, complete the operation
+    if (isDraggingObject || isResizingObject || isRotatingObject) {
+        // Simulate mouse up to save the current state.
+        // This is a simplified approach. A more robust solution might track mouse events on the document.
+        // For now, we assume the user intends to finish the operation at the last known position.
+        // We need a way to call handleCanvasMouseUp without an event, or refactor its logic.
+        // Let's just reset the states to prevent sticking, server update will happen on next interaction or explicit save.
+        // console.log("Mouse left canvas during active operation. Operation might be implicitly completed or cancelled.");
+        // setIsDraggingObject(false);
+        // setDragStartOffset(null);
+        // setIsResizingObject(false);
+        // setResizeHandle(null);
+        // setIsRotatingObject(false);
+        // setRotationStartAngle(0);
+        // setObjectCenter(null);
+        // setObjectInitialState(null);
+        // To ensure data is saved, we might need to trigger a save here.
+        // For now, let's rely on the existing mouseup logic which should eventually be triggered.
+        // Or, if the user re-enters and continues, it's fine. If they drop outside, it's tricky.
     }
   };
 
@@ -767,11 +1111,12 @@ const AlbumEdit: React.FC = () => {
           <option value="10">太</option>
         </select>
         <input type="color" value={penColor} onChange={(e) => setPenColor(e.target.value)} disabled={!drawingMode} />
-        <button>オブジェクト選択</button>
+        <button onClick={() => setSelectedObject(null)} disabled={!selectedObject}>選択解除</button>
+        <button onClick={handleDeleteObject} disabled={!selectedObject}>選択オブジェクト削除</button>
         {cropMode === 'shape' && selectedObject && (
           <>
             <button onClick={handleConfirmCrop}>長方形で確定</button>
-            <button onClick={() => { setCropMode(null); setCropShape(null); setSelectedObject(null); }}>キャンセル</button>
+            <button onClick={() => { setCropMode(null); setCropShape(null); /* Don't deselect here */ }}>切り取りキャンセル</button>
             {cropShape && (
               <div style={{ marginLeft: '10px', border: '1px solid #ccc', padding: '5px'}}>
                 <small>Crop X: <input type="number" value={cropShape.x} onChange={e => setCropShape({...cropShape, x: parseInt(e.target.value)})} style={{width: '50px'}} /></small>
@@ -788,11 +1133,11 @@ const AlbumEdit: React.FC = () => {
           className={`album-edit-canvas ${drawingMode ? 'drawing-active' : ''}`}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
-          style={{ cursor: drawingMode ? 'crosshair' : 'default' }}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
+          onMouseLeave={handleMouseLeaveCanvas}
+          style={{ cursor: drawingMode ? 'crosshair' : (isDraggingObject ? 'grabbing' : 'default') }}
         >
           {/* 配置されたオブジェクトを描画 */}
           {albumObjects.map(obj => {
@@ -804,135 +1149,128 @@ const AlbumEdit: React.FC = () => {
               height: `${obj.height}px`,
               transform: `rotate(${obj.rotation}deg)`,
               zIndex: obj.zIndex,
-              border: '1px solid #ccc', // 共通スタイル
+              border: selectedObject?.objectId === obj.objectId ? '2px solid blue' : '1px solid #ccc', // Updated border for selection
+              boxSizing: 'border-box', // Important for consistent sizing with border
+            };
+            const isSelected = selectedObject?.objectId === obj.objectId;
+
+            const renderContent = () => {
+                if (obj.type === 'photo') {
+                    const photo = photos.find(p => p.id === obj.contentData.photoId);
+                    return photo ? <img src={photo.url} alt={photo.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '写真読込エラー';
+                } else if (obj.type === 'sticker') {
+                    const sticker = stickers.find(s => s.id === obj.contentData.stickerId);
+                    return sticker ? <img src={sticker.url} alt={sticker.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : 'ステッカー読込エラー';
+                } else if (obj.type === 'text') {
+                    return (
+                        <div style={{
+                            color: obj.contentData.color || '#000000',
+                            fontSize: `${obj.contentData.size || 16}px`,
+                            fontWeight: obj.contentData.bold ? 'bold' : 'normal',
+                            fontFamily: obj.contentData.font || 'Arial',
+                            padding: '5px', // Inner padding for text
+                            width: '100%',
+                            height: '100%',
+                            overflow: 'hidden',
+                            whiteSpace: 'pre-wrap',
+                            boxSizing: 'border-box',
+                        }}>
+                            {isTextEditing && currentTextObjectId === obj.objectId ? (
+                                <textarea
+                                    value={editingText}
+                                    onChange={(e) => setEditingText(e.target.value)}
+                                    onBlur={handleTextEditComplete}
+                                    autoFocus
+                                    style={{
+                                        width: '100%', height: '100%', border: 'none', padding: '0', margin: '0',
+                                        background: 'transparent', outline: 'none', resize: 'none',
+                                        fontFamily: currentTextStyle.font, fontSize: `${currentTextStyle.size}px`,
+                                        color: currentTextStyle.color, fontWeight: currentTextStyle.bold ? 'bold' : 'normal',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                            ) : (
+                                obj.contentData.text
+                            )}
+                        </div>
+                    );
+                } else if (obj.type === 'drawing') {
+                    return (
+                        <svg width="100%" height="100%" viewBox={`0 0 ${obj.width} ${obj.height}`} style={{ overflow: 'visible' }}>
+                            <path
+                                d={obj.contentData.pathData}
+                                stroke={obj.contentData.color || '#000000'}
+                                strokeWidth={obj.contentData.thickness || 2}
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+                    );
+                }
+                return null;
             };
 
-            if (obj.type === 'photo') {
-              const photo = photos.find(p => p.id === obj.contentData.photoId);
-              return (
-                <div
-                  key={obj.objectId}
-                  className={`album-object photo-object ${selectedObject?.objectId === obj.objectId ? 'selected' : ''}`}
-                  style={commonStyle}
-                  onClick={() => handleSelectObject(obj)}
-                >
-                  {photo ? <img src={photo.url} alt={photo.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '写真読込エラー'}
-                  {selectedObject?.objectId === obj.objectId && cropMode === 'shape' && (
-                    <div className="crop-overlay-shape">
-                      {cropShape && (
-                        <div
-                          className="crop-rectangle"
-                          style={{
-                            position: 'absolute',
-                            left: `${cropShape.x}px`,
-                            top: `${cropShape.y}px`,
-                            width: `${cropShape.width}px`,
-                            height: `${cropShape.height}px`,
-                            border: '2px dashed yellow',
-                            boxSizing: 'border-box',
-                            cursor: 'move', // あとでリサイズハンドルなどを追加
-                          }}
+            return (
+              <div
+                key={obj.objectId}
+                className={`album-object ${obj.type}-object ${isSelected ? 'selected' : ''}`}
+                style={commonStyle}
+                onMouseDown={(e) => handleObjectMouseDown(e, obj)}
+                onDoubleClick={obj.type === 'text' ? () => handleTextObjectClick(obj) : undefined}
+              >
+                {renderContent()}
+                {isSelected && ( // Show handles only if selected
+                  <>
+                    {/* Resize Handles and Delete Button (shown when not rotating and not resizing) */}
+                    {!isRotatingObject && !isResizingObject && (
+                      <>
+                        {['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].map(handle => (
+                          <div
+                            key={handle}
+                            className={`resize-handle ${handle}`}
+                            onMouseDown={(e) => handleObjectResizeMouseDown(e, handle)}
+                          />
+                        ))}
+                        <button
+                          className="delete-object-button"
+                          onClick={handleDeleteObject}
                         >
-                          {/* リサイズハンドルなどをここに追加可能 */}
-                        </div>
-                      )}
-                      <p style={{color: 'white', background: 'rgba(0,0,0,0.5)', padding: '5px', zIndex: 1}}>図形切り取り</p>
+                          X
+                        </button>
+                      </>
+                    )}
+                    {/* Rotation Handle (shown when not resizing) */}
+                    {!isResizingObject && (
+                       <div
+                           className="rotate-handle"
+                           onMouseDown={(e) => handleObjectRotationMouseDown(e)}
+                       >
+                           ↻
+                       </div>
+                    )}
+                  </>
+                )}
+                {isSelected && cropMode === 'shape' && obj.type === 'photo' && (
+                    <div className="crop-overlay-shape">
+                        {cropShape && (
+                            <div
+                                className="crop-rectangle"
+                                style={{
+                                    position: 'absolute',
+                                    left: `${cropShape.x}px`, top: `${cropShape.y}px`,
+                                    width: `${cropShape.width}px`, height: `${cropShape.height}px`,
+                                    border: '2px dashed yellow', boxSizing: 'border-box', cursor: 'move',
+                                }}
+                            >
+                                {/* Future: Add handles to resize cropShape itself */}
+                            </div>
+                        )}
+                        <p style={{ color: 'white', background: 'rgba(0,0,0,0.5)', padding: '5px', zIndex: 1 }}>図形切り取り</p>
                     </div>
-                  )}
-                </div>
-              );
-            } else if (obj.type === 'sticker') {
-              // ステッカーの描画 (contentData.stickerId を使用)
-              return (
-                <div
-                  key={obj.objectId}
-                  className="album-object sticker-object"
-                  style={{ ...commonStyle, backgroundColor: 'lightblue' /* 仮のスタイル */ }}
-                >
-                  Sticker: {obj.contentData.stickerId}
-                </div>
-              );
-            } else if (obj.type === 'text') {
-              // テキストの描画 (contentData.text, font, size, color, bold を使用)
-              return (
-                <div
-                  key={obj.objectId}
-                  className={`album-object text-object ${selectedObject?.objectId === obj.objectId ? 'selected' : ''}`}
-                  style={{
-                    ...commonStyle,
-                    color: obj.contentData.color || '#000000',
-                    fontSize: `${obj.contentData.size || 16}px`,
-                    fontWeight: obj.contentData.bold ? 'bold' : 'normal',
-                    fontFamily: obj.contentData.font || 'Arial',
-                    border: selectedObject?.objectId === obj.objectId ? '2px solid blue' : '1px dashed #aaa',
-                    padding: '5px',
-                    boxSizing: 'border-box',
-                    overflow: 'hidden', // Auto-sizing text might need different overflow
-                    whiteSpace: 'pre-wrap',
-                  }}
-                  onClick={() => handleTextObjectClick(obj)}
-                  onDoubleClick={() => handleTextObjectClick(obj)} // Consider double click for edit
-                >
-                  {isTextEditing && currentTextObjectId === obj.objectId ? (
-                    <textarea
-                      value={editingText}
-                      onChange={(e) => setEditingText(e.target.value)}
-                      onBlur={handleTextEditComplete}
-                      autoFocus
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        border: 'none',
-                        padding: '0',
-                        margin: '0',
-                        background: 'transparent',
-                        outline: 'none',
-                        resize: 'none', // Or allow resize and update object width/height
-                        fontFamily: currentTextStyle.font,
-                        fontSize: `${currentTextStyle.size}px`,
-                        color: currentTextStyle.color,
-                        fontWeight: currentTextStyle.bold ? 'bold' : 'normal',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  ) : (
-                    obj.contentData.text
-                  )}
-                </div>
-              );
-            } else if (obj.type === 'drawing') {
-              // 描画オブジェクトの描画 (contentData.pathData, color, thickness を使用 - SVGなどで描画)
-              // ここでは単純なプレースホルダー
-              return (
-                <div
-                  key={obj.objectId}
-                  className="album-object drawing-object"
-                  style={{
-                    ...commonStyle,
-                    // Drawings are rendered via SVG within this div
-                    // border: '1px dashed green', // Optional: for visualizing bounds
-                    overflow: 'visible', // Ensure SVG path isn't clipped by div bounds if path goes outside
-                  }}
-                >
-                  <svg
-                    width={obj.width} // SVG takes full width of the object
-                    height={obj.height} // SVG takes full height of the object
-                    viewBox={`0 0 ${obj.width} ${obj.height}`} // ViewBox matches object dimensions
-                    style={{ position: 'absolute', top: 0, left: 0 }}
-                  >
-                    <path
-                      d={obj.contentData.pathData}
-                      stroke={obj.contentData.color || '#000000'}
-                      strokeWidth={obj.contentData.thickness || 2}
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-              );
-            }
-            return null; // 未知のタイプは描画しない
+                )}
+              </div>
+            );
           })}
           {/* Live drawing preview */}
           {isDrawing && currentPath && (
