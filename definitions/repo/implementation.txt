@@ -80,3 +80,17 @@
         - **Output (Success 204)**: No Content
         - **Output (Error 404)**: { error: "NotFound", message: "Sticker not found." }
         - **Output (Error 500)**: { error: "ServerError", message: "Failed to delete sticker." }
+### File: backend/src/routes/albums.ts
+
+- **function name**: PUT /albums/:albumId/objects/:objectId
+    - **short description**: 指定されたアルバムのページ上の既存のオブジェクトを更新するAPIエンドポイント。content_data をJSON文字列として保存するよう修正。レスポンスでは content_data をJSONオブジェクトとして返すよう修正。
+    - **input / output**:
+        - **Input**: albumId, objectId (in path parameters), Request body { positionX?: number, positionY?: number, width?: number, height?: number, rotation?: number, zIndex?: number, contentData?: object | string }, JWT token (in header)
+        - **Output (Success 200)**: { objectId: string, pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string }
+        - **Output (Error 400/401/403/404/500)**: { error: string, message: string }
+- **function name**: GET /albums/:albumId
+    - **short description**: 指定されたIDのアルバムの詳細情報（ページリスト、各ページのオブジェクトリストを含む）を取得するAPIエンドポイント。レスポンスの object.content_data をJSONオブジェクトとして返すよう修正。
+    - **input / output**:
+        - **Input**: albumId (in path parameter), JWT token (in header)
+        - **Output (Success 200)**: { albumId: string, title: string, createdAt: string, updatedAt: string, pages: [ { pageId: string, pageNumber: number, objects: [ { objectId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string } ] } ] }
+        - **Output (Error 401/403/404/500)**: { error: string, message: string }

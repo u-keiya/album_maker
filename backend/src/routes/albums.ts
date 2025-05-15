@@ -357,17 +357,17 @@ router.put('/:albumId/objects/:objectId', authenticateToken, async (req: Request
         if (zIndex !== undefined) existingObject.z_index = zIndex;
         if (contentData !== undefined) {
             // Ensure content_data is stored as a string if it's an object
-            if (typeof contentData === 'object') {
+            if (typeof contentData === 'object' && contentData !== null) {
                 existingObject.content_data = JSON.stringify(contentData);
             } else if (typeof contentData === 'string') {
-                // If it's already a string, ensure it's valid JSON (optional, depends on how strict you want to be)
+                // If it's already a string, ensure it's valid JSON
                 try {
-                    JSON.parse(contentData);
-                    existingObject.content_data = contentData;
+                    JSON.parse(contentData); // Validate
+                    existingObject.content_data = contentData; // Assign if valid
                 } catch (e) {
                     return res.status(400).json({ error: 'InvalidInput', message: 'contentData, if a string, must be valid JSON.' });
                 }
-            } else {
+            } else if (contentData !== undefined) { // Allow undefined, but not other types like null (unless stringified)
                 return res.status(400).json({ error: 'InvalidInput', message: 'contentData must be an object or a valid JSON string.' });
             }
         }
@@ -388,7 +388,7 @@ router.put('/:albumId/objects/:objectId', authenticateToken, async (req: Request
             height: existingObject.height,
             rotation: existingObject.rotation,
             zIndex: existingObject.z_index,
-            contentData: existingObject.content_data,
+            contentData: typeof existingObject.content_data === 'string' ? JSON.parse(existingObject.content_data) : existingObject.content_data,
             createdAt: existingObject.created_at,
             updatedAt: existingObject.updated_at,
         };
@@ -509,7 +509,7 @@ router.get('/:albumId', authenticateToken, async (req: Request, res: Response) =
                     height: object.height,
                     rotation: object.rotation,
                     zIndex: object.z_index,
-                    contentData: object.content_data,
+                    contentData: typeof object.content_data === 'string' ? JSON.parse(object.content_data) : object.content_data,
                     createdAt: object.created_at,
                     updatedAt: object.updated_at,
                 })),
