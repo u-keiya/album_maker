@@ -54,11 +54,25 @@
 .album-edit-canvas {
   flex-grow: 1;
   padding: 20px;
-  background-color: #e9e9e9;
+  background-color: #ffffff; /* 白い背景に変更 */
+  border: 1px solid #d0d0d0; /* 薄い境界線を追加 */
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.05); /* 内側に薄い影を追加 */
   overflow-y: auto; /* キャンバスエリアが縦に長い場合にスクロール */
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* ページを上部に配置 */
+  position: relative; /* オブジェクト配置の基準とするため */
+}
+
+/* ページを表す要素のスタイル（オプション） */
+.album-page-representation {
+  width: 80%; /* キャンバスに対するページの幅 */
+  min-height: 90%; /* キャンバスに対するページの最小高さ */
+  background-color: #fdfdfd; /* 若干オフホワイトのページ背景 */
+  border: 1px solid #cccccc;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  margin-top: 20px; /* 上部の余白 */
+  position: relative; /* オブジェクトのコンテナとして */
 }
 
 .album-edit-canvas.drawing-active {

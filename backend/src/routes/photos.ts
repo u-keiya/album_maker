@@ -6,6 +6,7 @@ import AppDataSource from '../../data-source';
 import { Photo } from '../entities/Photo';
 import { User } from '../entities/User'; // Assuming User entity is needed for user_id
 import { authenticateToken } from '../middleware/authMiddleware'; // Assuming auth middleware exists
+import { getBlobUrlWithSas } from '../utils/azureStorage'; // Import the SAS helper
 
 const router: Router = express.Router();
 
@@ -88,7 +89,14 @@ router.post('/', authenticateToken, upload.single('file'), async (req: Request, 
 
     const newPhoto = new Photo();
     newPhoto.user_id = userId;
-    newPhoto.file_path = blockBlobClient.url;
+    // newPhoto.file_path = blockBlobClient.url; // Original direct URL
+    const blobUrlWithSas = containerClient ? getBlobUrlWithSas(containerClient, blobName) : blockBlobClient.url;
+    if (!blobUrlWithSas || !blobUrlWithSas.includes('?sig=')) { // Check if SAS token is likely present
+        console.warn(`Failed to generate SAS token for blob: ${blobName} or SAS token is missing. Falling back to direct URL.`);
+        newPhoto.file_path = blockBlobClient.url; // Fallback
+    } else {
+        newPhoto.file_path = blobUrlWithSas;
+    }
     newPhoto.original_filename = originalFilename;
     newPhoto.file_size = req.file.size;
     newPhoto.mime_type = req.file.mimetype;

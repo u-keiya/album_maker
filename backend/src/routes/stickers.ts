@@ -5,8 +5,28 @@ from '../middleware/authMiddleware';
 import dataSource from '../../data-source'; // Corrected import
 import { Sticker } from '../entities/Sticker';
 import { User } from '../entities/User'; // Assuming User entity for admin check
+import { getBlobUrlWithSas } from '../utils/azureStorage'; // Import the SAS helper
+import { BlobServiceClient, ContainerClient } from '@azure/storage-blob'; // For ContainerClient
 
 const router = express.Router();
+
+// --- Azure Blob Storage Configuration (similar to photos.ts and albums.ts) ---
+const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
+// Assuming stickers are in a different container, or adjust if they are in the same 'photos' container
+const AZURE_STICKER_CONTAINER_NAME = process.env.AZURE_STICKER_CONTAINER_NAME || 'stickers';
+
+let stickerContainerClient: ContainerClient | null = null;
+if (AZURE_STORAGE_CONNECTION_STRING) {
+  try {
+    const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+    stickerContainerClient = blobServiceClient.getContainerClient(AZURE_STICKER_CONTAINER_NAME);
+    console.log(`stickers.ts: Successfully connected to Azure Blob Storage container: ${AZURE_STICKER_CONTAINER_NAME}`);
+  } catch (error) {
+    console.error(`stickers.ts: Failed to connect to Azure Blob Storage for stickers: ${error}`);
+  }
+} else {
+  console.warn('stickers.ts: AZURE_STORAGE_CONNECTION_STRING is not set. SAS token generation for sticker image URLs will fallback or fail.');
+}
 
 // Middleware to check for admin privileges (placeholder)
 const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
@@ -36,8 +56,47 @@ const validate = (req: Request, res: Response, next: NextFunction) => {
 router.get('/', authenticateToken, async (req: Request, res: Response) => {
   try {
     const stickerRepository = dataSource.getRepository(Sticker);
-    const stickers = await stickerRepository.find();
-    res.status(200).json(stickers);
+    const stickersFromDb = await stickerRepository.find();
+
+    const stickersWithSas = stickersFromDb.map(sticker => {
+      let imageUrlWithSas = sticker.file_path; // Default to original path
+      if (stickerContainerClient && sticker.file_path) {
+        try {
+          // Extract blob name from the file_path URL
+          const urlParts = new URL(sticker.file_path);
+          const pathParts = urlParts.pathname.split('/');
+          const blobName = pathParts.pop(); // Get last part of path (blob name)
+          const containerNameFromUrl = pathParts.pop(); // Get container name from URL
+
+          if (blobName && containerNameFromUrl === stickerContainerClient.containerName) {
+            const sasUrl = getBlobUrlWithSas(stickerContainerClient, blobName);
+            if (sasUrl) {
+              imageUrlWithSas = sasUrl;
+            } else {
+              console.warn(`Failed to generate SAS URL for sticker ${sticker.sticker_id}, blob ${blobName}`);
+            }
+          } else if (blobName) {
+            console.warn(`Sticker ${sticker.sticker_id} blob ${blobName} is in container ${containerNameFromUrl}, but expected ${stickerContainerClient.containerName}. SAS not applied or applied to wrong container client.`);
+            // If stickers can be in different containers and you have multiple clients, you'd need more logic here.
+            // For now, we assume one sticker container.
+          }
+        } catch (e) {
+          console.warn(`Could not parse sticker file_path or generate SAS for sticker ${sticker.sticker_id}: ${sticker.file_path}`, e);
+          // imageUrlWithSas remains the original sticker.file_path
+        }
+      }
+      return {
+        ...sticker,
+        // Ensure the property name matches what the frontend expects (e.g., imageUrl or file_path)
+        // Frontend's Sticker interface uses 'id' and 'imageUrl'.
+        // Backend's Sticker entity uses 'sticker_id' and 'file_path'.
+        // The frontend mapping `sticker.file_path || sticker.imageUrl` handles this.
+        // So, we update file_path here, and frontend mapping will pick it up.
+        file_path: imageUrlWithSas, // This will be mapped to imageUrl by frontend
+      };
+    });
+
+    res.status(200).json(stickersWithSas);
   } catch (error) {
     console.error('Error fetching stickers:', error);
     res.status(500).json({ error: 'ServerError', message: 'Failed to fetch stickers.' });
@@ -53,11 +112,38 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const stickerRepository = dataSource.getRepository(Sticker);
-      const sticker = await stickerRepository.findOneBy({ sticker_id: req.params.stickerId });
-      if (!sticker) {
+      const stickerFromDb = await stickerRepository.findOneBy({ sticker_id: req.params.stickerId });
+      if (!stickerFromDb) {
         return res.status(404).json({ error: 'NotFound', message: 'Sticker not found.' });
       }
-      res.status(200).json(sticker);
+
+      let imageUrlWithSas = stickerFromDb.file_path;
+      if (stickerContainerClient && stickerFromDb.file_path) {
+        try {
+          const urlParts = new URL(stickerFromDb.file_path);
+          const pathParts = urlParts.pathname.split('/');
+          const blobName = pathParts.pop();
+          const containerNameFromUrl = pathParts.pop();
+
+          if (blobName && containerNameFromUrl === stickerContainerClient.containerName) {
+            const sasUrl = getBlobUrlWithSas(stickerContainerClient, blobName);
+            if (sasUrl) {
+              imageUrlWithSas = sasUrl;
+            } else {
+              console.warn(`Failed to generate SAS URL for single sticker ${stickerFromDb.sticker_id}, blob ${blobName}`);
+            }
+          } else if (blobName) {
+             console.warn(`Single sticker ${stickerFromDb.sticker_id} blob ${blobName} is in container ${containerNameFromUrl}, but expected ${stickerContainerClient.containerName}. SAS not applied.`);
+          }
+        } catch (e) {
+          console.warn(`Could not parse sticker file_path or generate SAS for single sticker ${stickerFromDb.sticker_id}: ${stickerFromDb.file_path}`, e);
+        }
+      }
+
+      res.status(200).json({
+        ...stickerFromDb,
+        file_path: imageUrlWithSas, // Return with potentially SAS-enhanced URL
+      });
     } catch (error) {
       console.error('Error fetching sticker:', error);
       res.status(500).json({ error: 'ServerError', message: 'Failed to fetch sticker.' });
