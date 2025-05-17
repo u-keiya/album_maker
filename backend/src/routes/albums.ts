@@ -6,9 +6,29 @@ import { AlbumObject } from '../entities/AlbumObject'; // Add AlbumObject import
 import { User } from '../entities/User'; // Assuming User entity exists and is populated by auth middleware
 import { authenticateToken } from '../middleware/authMiddleware'; // Corrected path if needed, assuming it's correct now
 import { EntityManager } from 'typeorm';
+import { getBlobUrlWithSas } from '../utils/azureStorage'; // Import the SAS helper
+import { BlobServiceClient, ContainerClient } from '@azure/storage-blob'; // For ContainerClient
+import { Photo } from '../entities/Photo'; // To fetch photo details for SAS
 // Removed asyncHandler import
 
 const router: Router = express.Router();
+
+// --- Azure Blob Storage Configuration (similar to photos.ts) ---
+const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const AZURE_STORAGE_CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'photos'; // Assuming photos and stickers are in the same container or adjust as needed
+
+let containerClient: ContainerClient | null = null;
+if (AZURE_STORAGE_CONNECTION_STRING) {
+  try {
+    const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+    containerClient = blobServiceClient.getContainerClient(AZURE_STORAGE_CONTAINER_NAME);
+    console.log(`albums.ts: Successfully connected to Azure Blob Storage container: ${AZURE_STORAGE_CONTAINER_NAME}`);
+  } catch (error) {
+    console.error(`albums.ts: Failed to connect to Azure Blob Storage: ${error}`);
+  }
+} else {
+  console.warn('albums.ts: AZURE_STORAGE_CONNECTION_STRING is not set. SAS token generation for image URLs will fallback or fail.');
+}
 
 // POST /albums - Create a new album
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
@@ -357,17 +377,17 @@ router.put('/:albumId/objects/:objectId', authenticateToken, async (req: Request
         if (zIndex !== undefined) existingObject.z_index = zIndex;
         if (contentData !== undefined) {
             // Ensure content_data is stored as a string if it's an object
-            if (typeof contentData === 'object') {
+            if (typeof contentData === 'object' && contentData !== null) {
                 existingObject.content_data = JSON.stringify(contentData);
             } else if (typeof contentData === 'string') {
-                // If it's already a string, ensure it's valid JSON (optional, depends on how strict you want to be)
+                // If it's already a string, ensure it's valid JSON
                 try {
-                    JSON.parse(contentData);
-                    existingObject.content_data = contentData;
+                    JSON.parse(contentData); // Validate
+                    existingObject.content_data = contentData; // Assign if valid
                 } catch (e) {
                     return res.status(400).json({ error: 'InvalidInput', message: 'contentData, if a string, must be valid JSON.' });
                 }
-            } else {
+            } else if (contentData !== undefined) { // Allow undefined, but not other types like null (unless stringified)
                 return res.status(400).json({ error: 'InvalidInput', message: 'contentData must be an object or a valid JSON string.' });
             }
         }
@@ -388,7 +408,7 @@ router.put('/:albumId/objects/:objectId', authenticateToken, async (req: Request
             height: existingObject.height,
             rotation: existingObject.rotation,
             zIndex: existingObject.z_index,
-            contentData: existingObject.content_data,
+            contentData: typeof existingObject.content_data === 'string' ? JSON.parse(existingObject.content_data) : existingObject.content_data,
             createdAt: existingObject.created_at,
             updatedAt: existingObject.updated_at,
         };
@@ -460,6 +480,7 @@ router.get('/:albumId', authenticateToken, async (req: Request, res: Response) =
     const albumRepository = AppDataSource.getRepository(Album);
     const pageRepository = AppDataSource.getRepository(AlbumPage);
     const objectRepository = AppDataSource.getRepository(AlbumObject);
+    const photoRepository = AppDataSource.getRepository(Photo); // For fetching photo details
 
     try {
         // 1. Find the album and verify ownership
@@ -486,34 +507,87 @@ router.get('/:albumId', authenticateToken, async (req: Request, res: Response) =
 
                 return {
                     ...page,
-                    objects,
+                    objects, // These are raw objects from DB
                 };
             })
         );
 
-        // 4. Prepare and send the response
+        // 4. Prepare and send the response, generating SAS URLs for photo/sticker objects
         const responseData = {
             albumId: album.album_id,
             title: album.title,
             createdAt: album.created_at,
             updatedAt: album.updated_at,
-            pages: pagesWithObjects.map(page => ({
+            pages: await Promise.all(pagesWithObjects.map(async (page) => ({
                 pageId: page.page_id,
                 pageNumber: page.page_number,
-                objects: page.objects.map(object => ({
-                    objectId: object.object_id,
-                    type: object.type,
-                    positionX: object.position_x,
-                    positionY: object.position_y,
-                    width: object.width,
-                    height: object.height,
-                    rotation: object.rotation,
-                    zIndex: object.z_index,
-                    contentData: object.content_data,
-                    createdAt: object.created_at,
-                    updatedAt: object.updated_at,
+                objects: await Promise.all(page.objects.map(async (object) => {
+                    let parsedContentData = typeof object.content_data === 'string'
+                        ? JSON.parse(object.content_data)
+                        : object.content_data;
+
+                    if (containerClient && parsedContentData) {
+                        if (object.type === 'photo' && parsedContentData.photoId) {
+                            try {
+                                const photoEntity = await photoRepository.findOneBy({ photo_id: parsedContentData.photoId });
+                                if (photoEntity && photoEntity.file_path) {
+                                    const blobName = photoEntity.file_path.substring(photoEntity.file_path.lastIndexOf('/') + 1);
+                                    const sasUrl = getBlobUrlWithSas(containerClient, blobName);
+                                    if (sasUrl) {
+                                        parsedContentData.url = sasUrl; // Add/overwrite url with SAS
+                                    } else {
+                                        console.warn(`Failed to get SAS URL for photo ${parsedContentData.photoId}, blob ${blobName}`);
+                                        // Keep original URL from contentData if SAS fails, or handle error
+                                        // parsedContentData.url might already be a direct URL if SAS failed during upload
+                                    }
+                                }
+                            } catch (e) {
+                                console.error(`Error fetching photo entity or generating SAS for photoId ${parsedContentData.photoId}:`, e);
+                            }
+                        } else if (object.type === 'sticker' && parsedContentData.stickerId && parsedContentData.imageUrl) {
+                            // Assuming sticker imageUrl might also be a direct blob URL that needs SAS
+                            // This part depends on how sticker images are stored and referenced.
+                            // If sticker imageUrl is already a public URL or managed differently, this might not be needed.
+                            // For consistency, if it's a blob URL, let's try to get SAS.
+                            // We need a way to get blobName from stickerId or imageUrl.
+                            // For this example, let's assume imageUrl is a full blob URL and we extract blobName.
+                            try {
+                                const urlParts = new URL(parsedContentData.imageUrl);
+                                const pathParts = urlParts.pathname.split('/');
+                                const blobNameFromStickerUrl = pathParts.pop(); // Get last part of path
+                                const containerNameFromStickerUrl = pathParts.pop(); // Get container name
+
+                                if (blobNameFromStickerUrl && containerNameFromStickerUrl && containerClient.containerName === containerNameFromStickerUrl) {
+                                     const sasUrl = getBlobUrlWithSas(containerClient, blobNameFromStickerUrl);
+                                     if (sasUrl) {
+                                         parsedContentData.imageUrl = sasUrl;
+                                     } else {
+                                         console.warn(`Failed to get SAS URL for sticker ${parsedContentData.stickerId}, blob ${blobNameFromStickerUrl}`);
+                                     }
+                                } else if (blobNameFromStickerUrl && containerClient.containerName !== containerNameFromStickerUrl) {
+                                    console.warn(`Sticker ${parsedContentData.stickerId} blob ${blobNameFromStickerUrl} is in a different container (${containerNameFromStickerUrl}) than configured (${containerClient.containerName}). SAS not applied.`);
+                                }
+                            } catch(e) {
+                                console.warn(`Could not parse sticker imageUrl or generate SAS for sticker ${parsedContentData.stickerId}: ${parsedContentData.imageUrl}`, e);
+                            }
+                        }
+                    }
+
+                    return {
+                        objectId: object.object_id,
+                        type: object.type,
+                        positionX: object.position_x,
+                        positionY: object.position_y,
+                        width: object.width,
+                        height: object.height,
+                        rotation: object.rotation,
+                        zIndex: object.z_index,
+                        contentData: parsedContentData, // Use the potentially modified contentData
+                        createdAt: object.created_at,
+                        updatedAt: object.updated_at,
+                    };
                 })),
-            })),
+            }))),
         };
 
         return res.status(200).json(responseData);

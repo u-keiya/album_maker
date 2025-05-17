@@ -23,6 +23,7 @@ interface AlbumPage {
 interface Album {
   albumId: string;
   title: string;
+  userId: string; // userIdを追加
   pages: AlbumPage[];
   // 他のアルバム情報があれば追加
 }
@@ -110,23 +111,66 @@ const AlbumEdit: React.FC = () => {
           if (!albumResponse.ok) {
             throw new Error(`アルバム情報の取得に失敗しました: ${albumResponse.status}`);
           }
-          const albumData: Album = await albumResponse.json();
+          let albumData: Album = await albumResponse.json();
+
+          // Parse contentData for all objects in all pages
+          if (albumData && albumData.pages) {
+            albumData = {
+              ...albumData,
+              pages: albumData.pages.map(page => ({
+                ...page,
+                objects: page.objects.map(obj => {
+                  try {
+                    return {
+                      ...obj,
+                      contentData: typeof obj.contentData === 'string' ? JSON.parse(obj.contentData) : obj.contentData,
+                    };
+                  } catch (e) {
+                    console.error('Failed to parse contentData for object:', obj.objectId, e);
+                    return { ...obj, contentData: {} }; // Set to empty object on parse error
+                  }
+                }),
+              })),
+            };
+          }
+
           setAlbum(albumData);
           if (albumData.pages && albumData.pages.length > 0) {
             // 初期表示ページIDを設定
             const initialPageId = albumData.pages[0].pageId;
             setCurrentPageId(initialPageId);
             // 初期表示ページのオブジェクトをセット
-            const initialPageObjects = albumData.pages.find(p => p.pageId === initialPageId)?.objects || [];
-            setAlbumObjects(initialPageObjects);
+            const initialPage = albumData.pages.find(p => p.pageId === initialPageId);
+            setAlbumObjects(initialPage?.objects || []);
           }
 
-          // アップロード済み写真リストの取得 (仮)
-          setPhotos([
-            { id: 'photo1', url: 'https://via.placeholder.com/100x100.png?text=Photo+1', name: 'Photo 1' },
-            { id: 'photo2', url: 'https://via.placeholder.com/100x100.png?text=Photo+2', name: 'Photo 2' },
-            { id: 'photo3', url: 'https://via.placeholder.com/100x100.png?text=Photo+3', name: 'Photo 3' },
-          ]);
+          // アップロード済み写真リストの取得 (実際のAPIエンドポイントを想定)
+          // userIdをlocalStorageから取得する（応急処置）
+          const storedUserId = localStorage.getItem('userId');
+          if (!storedUserId) {
+            console.warn('localStorageにuserIdが見つかりません。写真リストの取得をスキップします。');
+            setPhotos([ // モックデータでフォールバック
+              { id: 'photo1', url: 'https://via.placeholder.com/100x100.png?text=Photo+1', name: 'Photo 1' },
+              { id: 'photo2', url: 'https://via.placeholder.com/100x100.png?text=Photo+2', name: 'Photo 2' },
+              { id: 'photo3', url: 'https://via.placeholder.com/100x100.png?text=Photo+3', name: 'Photo 3' },
+            ]);
+          } else {
+            const photosResponse = await fetch(`/api/photos?userId=${storedUserId}`, {
+              headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (!photosResponse.ok) {
+            // エラーでも処理を続行するが、コンソールには警告を出す
+            console.warn(`アップロード済み写真リストの取得に失敗しました: ${photosResponse.status}. モックデータを使用します。`);
+            setPhotos([
+              { id: 'photo1', url: 'https://via.placeholder.com/100x100.png?text=Photo+1', name: 'Photo 1' },
+              { id: 'photo2', url: 'https://via.placeholder.com/100x100.png?text=Photo+2', name: 'Photo 2' },
+              { id: 'photo3', url: 'https://via.placeholder.com/100x100.png?text=Photo+3', name: 'Photo 3' },
+            ]);
+          } else {
+              const photosData: Photo[] = await photosResponse.json();
+              setPhotos(photosData);
+            }
+          }
 
           // ステッカーリストの取得
           const stickersResponse = await fetch(`/api/stickers`, {
@@ -135,27 +179,38 @@ const AlbumEdit: React.FC = () => {
           if (!stickersResponse.ok) {
             throw new Error(`ステッカーリストの取得に失敗しました: ${stickersResponse.status}`);
           }
-          const stickersData: Sticker[] = await stickersResponse.json();
-          setStickers(stickersData);
+          const rawStickersData: any[] = await stickersResponse.json(); // 一旦anyで受ける
+          // バックエンドのプロパティ名をフロントエンドのStickerインターフェースにマッピング
+          const mappedStickersData: Sticker[] = rawStickersData.map(sticker => ({
+            id: sticker.sticker_id || sticker.id, // sticker_idをidに
+            imageUrl: sticker.file_path || sticker.imageUrl, // file_pathをimageUrlに (SAS付きであることを期待)
+            name: sticker.name,
+          }));
+          setStickers(mappedStickersData);
+          console.log('%c[Fetch] Mapped stickers for sidebar:', 'color: purple', mappedStickersData);
 
-        } catch (error) {
+        } catch (error) { // このcatchブロックはtryに対応しています
           console.error('Error fetching album data:', error);
           alert(`データの取得中にエラーが発生しました: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      } else {
+        } // try...catchの終了
+      } else { // if (albumIdFromParams) の else節
         console.error('Album ID not found in params');
         alert('アルバムIDがURLに含まれていません。');
-      }
-    };
+      } // if (albumIdFromParams) の終了
+    }; // fetchAlbumData 関数の終了
 
     fetchAlbumData();
-  }, [albumIdFromParams]);
+  }, [albumIdFromParams]); // useEffectの依存配列
 
   // currentPageIdが変更されたら、表示するオブジェクトを更新
   useEffect(() => {
     if (album && currentPageId) {
       const currentPage = album.pages.find(p => p.pageId === currentPageId);
-      setAlbumObjects(currentPage?.objects || []);
+      console.log(`%c[Effect] currentPageId or album changed. Page ID: ${currentPageId}`, 'color: cyan;');
+      console.log('%c[Effect] Current page from album state:', 'color: cyan;', JSON.parse(JSON.stringify(currentPage)));
+      const objectsToSet = currentPage?.objects || [];
+      console.log('%c[Effect] Setting albumObjects from album state with these objects:', 'color: cyan; font-weight: bold;', JSON.parse(JSON.stringify(objectsToSet)));
+      setAlbumObjects(objectsToSet);
     }
   }, [currentPageId, album]);
 
@@ -237,7 +292,7 @@ const AlbumEdit: React.FC = () => {
     const positionX = e.clientX - canvasRect.left;
     const positionY = e.clientY - canvasRect.top;
 
-    console.log(`${draggedItem.type} dropped:`, draggedItem.data, 'at', positionX, positionY);
+    console.log(`%c[Drop] Type: ${draggedItem.type}`, 'color: blue; font-weight: bold;', 'Item:', draggedItem.data, 'Coords:', { positionX, positionY });
 
     const token = localStorage.getItem('token');
     if (!token) {
@@ -252,17 +307,39 @@ const AlbumEdit: React.FC = () => {
 
     if (draggedItem.type === 'photo') {
       objectType = 'photo';
+      const photoData = draggedItem.data as Photo;
+      const img = new Image();
+      img.src = photoData.url;
+      try {
+        await img.decode();
+        itemWidth = img.naturalWidth > 0 ? img.naturalWidth : 100; // デフォルトサイズを設定
+        itemHeight = img.naturalHeight > 0 ? img.naturalHeight : 100; // デフォルトサイズを設定
+      } catch (e) {
+        console.error("Error decoding photo for size, using default 100x100:", e);
+        itemWidth = 100;
+        itemHeight = 100;
+      }
+
       newObjectDataPayload = {
-        photoId: draggedItem.data.id,
-        cropInfo: {},
+        photoId: photoData.id,
+        cropInfo: {}, // 初期状態では空のcropInfo
+        originalWidth: itemWidth, // 画像本来の幅
+        originalHeight: itemHeight, // 画像本来の高さ
+        url: photoData.url, // 表示用のURL
+        name: photoData.name // 写真の名前
       };
     } else if (draggedItem.type === 'sticker') {
       objectType = 'sticker';
-      itemWidth = 50; // ステッカーのデフォルトサイズ
+      const stickerData = draggedItem.data as Sticker;
+      // ステッカーのサイズは固定またはStickerインターフェースから取得する想定
+      // ここでは仮に固定値を使用
+      itemWidth = 50;
       itemHeight = 50;
+
       newObjectDataPayload = {
-        stickerId: draggedItem.data.id,
-        // sticker固有の他の情報があればここに追加
+        stickerId: stickerData.id,
+        name: stickerData.name,
+        imageUrl: stickerData.imageUrl // ステッカーの画像URLを保存
       };
     } else {
       console.error('Unknown dragged item type');
@@ -279,8 +356,9 @@ const AlbumEdit: React.FC = () => {
       height: itemHeight,
       rotation: 0,
       zIndex: albumObjects.length,
-      contentData: JSON.stringify(newObjectDataPayload),
+      contentData: JSON.stringify(newObjectDataPayload), // contentData is stringified here
     };
+    console.log('%c[Drop] Request to backend:', 'color: orange;', newObjectRequest);
 
     try {
       const response = await fetch(`/api/albums/${album.albumId}/objects`, {
@@ -294,16 +372,39 @@ const AlbumEdit: React.FC = () => {
 
       if (response.ok) {
         const responseObject: AlbumObject = await response.json();
-        console.log('Object added successfully:', responseObject);
-        setAlbumObjects(prevObjects => [...prevObjects, responseObject]);
+        // Ensure contentData from response is parsed if it's a string (though API spec says it should be object)
+        const parsedResponseObject = {
+            ...responseObject,
+            contentData: typeof responseObject.contentData === 'string'
+                ? JSON.parse(responseObject.contentData)
+                : responseObject.contentData,
+        };
+        console.log('%c[Drop] Object added successfully (from backend):', 'color: green;', parsedResponseObject);
+        // Log the URL for photo or sticker from the backend response
+        if (parsedResponseObject.type === 'photo') {
+            console.log(`%c[Drop] Photo URL from backend: ${parsedResponseObject.contentData?.url}`, 'color: green;');
+        } else if (parsedResponseObject.type === 'sticker') {
+            console.log(`%c[Drop] Sticker imageUrl from backend: ${parsedResponseObject.contentData?.imageUrl}`, 'color: green;');
+        }
+
+        setAlbumObjects(prevObjects => {
+          const newObjects = [...prevObjects, parsedResponseObject];
+          console.log('%c[Drop] Updated albumObjects state (direct):', 'color: magenta; font-weight: bold;', JSON.parse(JSON.stringify(newObjects)));
+          return newObjects;
+        });
         if (album) {
           const updatedPages = album.pages.map(page => {
             if (page.pageId === currentPageId) {
-              return { ...page, objects: [...page.objects, responseObject] };
+              // Ensure the object added to album.pages also has parsed contentData
+              return { ...page, objects: [...page.objects, parsedResponseObject] };
             }
             return page;
           });
-          setAlbum({ ...album, pages: updatedPages });
+          setAlbum(prevAlbum => { // Use functional update for prevAlbum
+            const newAlbumState = { ...(prevAlbum || album), pages: updatedPages }; // Ensure prevAlbum is used if available
+            console.log('%c[Drop] Updated album state (triggers effect):', 'color: darkorange; font-weight: bold;', JSON.parse(JSON.stringify(newAlbumState)));
+            return newAlbumState;
+          });
         }
       } else {
         const errorData = await response.json();
@@ -1130,15 +1231,21 @@ const AlbumEdit: React.FC = () => {
         <div
           className={`album-edit-canvas ${drawingMode ? 'drawing-active' : ''}`}
           onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          onMouseDown={handleCanvasMouseDown}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-          onMouseLeave={handleMouseLeaveCanvas}
+          // onDrop is now on album-page-representation
+          onMouseDown={handleCanvasMouseDown} // For deselecting objects or starting drawing on canvas itself
+          onMouseMove={handleCanvasMouseMove} // General mouse move for dragging/resizing/rotating objects
+          onMouseUp={handleCanvasMouseUp}     // General mouse up to finalize actions
+          onMouseLeave={handleMouseLeaveCanvas} // Handle mouse leaving canvas area
           style={{ cursor: drawingMode ? 'crosshair' : (isDraggingObject ? 'grabbing' : 'default') }}
         >
-          {/* 配置されたオブジェクトを描画 */}
-          {albumObjects.map(obj => {
+          <div
+            className="album-page-representation"
+            onDrop={handleDrop} // Drop items onto the page representation
+            // MouseDown/Move/Up for objects are handled by the objects themselves or the main canvas listeners
+            // No specific mouse events needed here unless for page-specific interactions not object-related
+          >
+            {/* 配置されたオブジェクトを描画 */}
+            {albumObjects.map(obj => {
             const commonStyle: React.CSSProperties = {
               position: 'absolute',
               left: `${obj.positionX}px`,
@@ -1153,60 +1260,143 @@ const AlbumEdit: React.FC = () => {
             const isSelected = selectedObject?.objectId === obj.objectId;
 
             const renderContent = () => {
-                if (obj.type === 'photo') {
-                    const photo = photos.find(p => p.id === obj.contentData.photoId);
-                    return photo ? <img src={photo.url} alt={photo.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '写真読込エラー';
-                } else if (obj.type === 'sticker') {
-                    const sticker = stickers.find(s => s.id === obj.contentData.stickerId);
-                    return sticker ? <img src={sticker.imageUrl} alt={sticker.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : 'ステッカー読込エラー';
-                } else if (obj.type === 'text') {
+              // Ensure obj.contentData is an object before accessing its properties
+              const content = (typeof obj.contentData === 'object' && obj.contentData !== null)
+                                ? obj.contentData
+                                : (typeof obj.contentData === 'string' ? JSON.parse(obj.contentData || '{}') : {}); // Attempt to parse if string
+              console.log(`%c[Render] ID: ${obj.objectId}, Type: ${obj.type}`, 'color: purple; font-weight: bold;', 'Parsed ContentData for Render:', content, 'Raw obj.contentData:', obj.contentData, 'Full Object:', obj);
+
+              switch (obj.type) {
+                case 'photo':
+                  let photoSrc = ''; // 初期値を空にする
+                  let photoAlt = `Photo object ID: ${obj.objectId}`; // デフォルトのalt
+
+                  if (content.photoId && photos.length > 0) {
+                    const foundPhoto = photos.find(p => p.id === content.photoId);
+                    if (foundPhoto && foundPhoto.url) { // foundPhoto.urlもチェック
+                      photoSrc = foundPhoto.url;
+                      photoAlt = foundPhoto.name || `Photo: ${foundPhoto.id}`;
+                    } else {
+                      photoAlt = `Photo ID: ${content.photoId} not found in sidebar list or URL missing.`;
+                      console.warn(`Photo with ID ${content.photoId} not found in sidebar or URL missing. Available photos:`, photos, "Found photo object:", foundPhoto);
+                    }
+                  } else if (content.url) { // Direct URL fallback from contentData
+                    photoSrc = content.url;
+                    photoAlt = content.name || `Photo ${obj.objectId}`;
+                  } else {
+                    console.warn(`Photo object ${obj.objectId} missing photoId/URL in contentData or photos list empty. Content:`, content, "Photos:", photos);
+                    photoAlt = `Photo data missing for ${obj.objectId}`;
+                  }
+
+                  if (!photoSrc) { // 最終的にphotoSrcが空ならエラー用プレースホルダー
+                    photoSrc = 'https://via.placeholder.com/100x100.png?text=Error';
+                    console.error('Final photoSrc is empty for object:', obj.objectId, 'Using placeholder.');
+                  }
+
+                  if (content.cropInfo && content.cropInfo.width && content.cropInfo.height) {
+                    const { x, y, width: cropW, height: cropH } = content.cropInfo;
+                    // Calculate the scale of the original image within the cropped view
+                    // This assumes obj.width and obj.height are the dimensions of the *cropped* image on canvas
+                    const scaleX = obj.width / cropW;
+                    const scaleY = obj.height / cropH;
+
                     return (
-                        <div style={{
-                            color: obj.contentData.color || '#000000',
-                            fontSize: `${obj.contentData.size || 16}px`,
-                            fontWeight: obj.contentData.bold ? 'bold' : 'normal',
-                            fontFamily: obj.contentData.font || 'Arial',
-                            padding: '5px', // Inner padding for text
-                            width: '100%',
-                            height: '100%',
-                            overflow: 'hidden',
-                            whiteSpace: 'pre-wrap',
-                            boxSizing: 'border-box',
-                        }}>
-                            {isTextEditing && currentTextObjectId === obj.objectId ? (
-                                <textarea
-                                    value={editingText}
-                                    onChange={(e) => setEditingText(e.target.value)}
-                                    onBlur={handleTextEditComplete}
-                                    autoFocus
-                                    style={{
-                                        width: '100%', height: '100%', border: 'none', padding: '0', margin: '0',
-                                        background: 'transparent', outline: 'none', resize: 'none',
-                                        fontFamily: currentTextStyle.font, fontSize: `${currentTextStyle.size}px`,
-                                        color: currentTextStyle.color, fontWeight: currentTextStyle.bold ? 'bold' : 'normal',
-                                        boxSizing: 'border-box',
-                                    }}
-                                />
-                            ) : (
-                                obj.contentData.text
-                            )}
-                        </div>
+                      <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
+                        <img
+                          src={photoSrc}
+                          alt={photoAlt}
+                          style={{
+                            position: 'absolute',
+                            left: `-${x * scaleX}px`,
+                            top: `-${y * scaleY}px`,
+                            width: `${content.originalWidth * scaleX}px`, // originalWidth of the image before crop
+                            height: `${content.originalHeight * scaleY}px`, // originalHeight of the image before crop
+                            maxWidth: 'none',
+                            maxHeight: 'none',
+                            objectFit: 'none',
+                          }}
+                        />
+                      </div>
                     );
-                } else if (obj.type === 'drawing') {
+                  }
+                  return <img src={photoSrc} alt={photoAlt} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+
+                case 'sticker':
+                  let stickerSrc = 'https://via.placeholder.com/50x50.png?text=StickerErr';
+                  let stickerAlt = 'Error loading sticker';
+                  // contentDataにimageUrlが直接保存されているか、またはstickerIdからstickersリストを検索
+                  if (content.imageUrl) {
+                    stickerSrc = content.imageUrl;
+                    stickerAlt = content.name || `Sticker ${obj.objectId}`;
+                  } else if (content.stickerId && stickers.length > 0) {
+                    const foundSticker = stickers.find(s => s.id === content.stickerId);
+                    if (foundSticker) {
+                      stickerSrc = foundSticker.imageUrl;
+                      stickerAlt = foundSticker.name;
+                    } else {
+                      stickerAlt = `Sticker ID: ${content.stickerId} not found in local list`;
+                      console.warn(`Sticker with ID ${content.stickerId} not found in stickers list. Content:`, content, "Stickers:", stickers);
+                    }
+                  } else {
+                     console.warn(`Sticker object ${obj.objectId} missing stickerId/imageUrl or stickers list empty. Content:`, content, "Stickers:", stickers);
+                  }
+                  return <img src={stickerSrc} alt={stickerAlt} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+
+                case 'text':
+                  const style: React.CSSProperties = {
+                    fontFamily: content.font || 'Arial',
+                    fontSize: `${content.size || 16}px`,
+                    color: content.color || '#000000',
+                    fontWeight: content.bold ? 'bold' : 'normal',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'left',
+                    padding: '5px',
+                    boxSizing: 'border-box',
+                  };
+                  if (isTextEditing && currentTextObjectId === obj.objectId) {
                     return (
-                        <svg width="100%" height="100%" viewBox={`0 0 ${obj.width} ${obj.height}`} style={{ overflow: 'visible' }}>
-                            <path
-                                d={obj.contentData.pathData}
-                                stroke={obj.contentData.color || '#000000'}
-                                strokeWidth={obj.contentData.thickness || 2}
-                                fill="none"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
+                      <textarea
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        onBlur={handleTextEditComplete}
+                        autoFocus
+                        style={{ ...style, width: '100%', height: '100%', border: '1px dashed #ccc', resize: 'none' }}
+                      />
                     );
-                }
-                return null;
+                  }
+                  return <div style={style} onDoubleClick={() => handleTextObjectClick(obj)}>{content.text || ''}</div>;
+
+                case 'drawing':
+                  if (!content.pathData || typeof content.pathData !== 'string' || content.pathData.trim() === '') {
+                    console.error("Drawing object has invalid or empty pathData:", obj, content);
+                    return <div style={{width: '100%', height: '100%', border: '1px dashed red', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'red'}}>Drawing Path Error</div>;
+                  }
+                  // viewBox はオブジェクトの保存された幅と高さではなく、描画データ自体の元の幅と高さに基づくべき
+                  // ただし、現状では content.originalWidth/Height を描画オブジェクトに保存していないため、obj.width/height を使う
+                  // より正確には、SVGパスのバウンディングボックスを計算するか、保存時に元のサイズを記録する必要がある
+                  return (
+                    <svg width="100%" height="100%" viewBox={`0 0 ${content.originalWidth || obj.width} ${content.originalHeight || obj.height}`}
+                         preserveAspectRatio="xMidYMid meet" style={{ overflow: 'visible' }}>
+                      <path
+                        d={content.pathData} // pathDataは、(0,0)を基準とした相対パスであるべき
+                        stroke={content.color || '#000000'}
+                        strokeWidth={content.thickness || 2}
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  );
+                default:
+                  console.warn('Unknown object type:', obj.type, obj);
+                  return <div>Unsupported object: {obj.type}</div>;
+              }
             };
 
             return (
@@ -1270,19 +1460,20 @@ const AlbumEdit: React.FC = () => {
               </div>
             );
           })}
-          {/* Live drawing preview */}
-          {isDrawing && currentPath && (
-            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-              <path
-                d={currentPath}
-                stroke={penColor}
-                strokeWidth={penThickness}
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          )}
+            {/* Live drawing preview - ensure it's relative to the page representation if drawing is page-bound */}
+            {isDrawing && currentPath && (
+              <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+                <path
+                  d={currentPath}
+                  stroke={penColor}
+                  strokeWidth={penThickness}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
+          </div>
         </div>
         <aside className="album-edit-sidebar">
           <div className="sidebar-tabs">
