@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import './AlbumEdit.css';
 
@@ -90,6 +90,9 @@ const AlbumEdit: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string>('');
   const [penColor, setPenColor] = useState<string>('#000000');
   const [penThickness, setPenThickness] = useState<number>(2);
+
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
 
 
   const params = useParams();
@@ -826,19 +829,29 @@ const AlbumEdit: React.FC = () => {
 
 
   const handleDrawingMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!drawingMode || !currentPageId || isResizingObject || isRotatingObject) return;
+    if (!drawingMode || !currentPageId || isResizingObject || isRotatingObject || !pageRef.current) return; // canvasRef を pageRef に変更
     setIsDrawing(true);
-    const canvasRect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - canvasRect.left;
-    const y = e.clientY - canvasRect.top;
+    const pageEl = pageRef.current; // canvasEl を pageEl に変更
+    const pageRect = pageEl.getBoundingClientRect(); // canvasRect を pageRect に変更
+    // const computedStyle = window.getComputedStyle(pageEl); // pageRef には padding がないと想定されるためコメントアウト
+    // const paddingLeft = parseFloat(computedStyle.paddingLeft);
+    // const paddingTop = parseFloat(computedStyle.paddingTop);
+
+    const x = e.clientX - pageRect.left; // canvasRect を pageRect に変更、padding計算は削除
+    const y = e.clientY - pageRect.top;  // canvasRect を pageRect に変更、padding計算は削除
     setCurrentPath(`M ${x} ${y}`);
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (drawingMode && isDrawing) {
-      const canvasRect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - canvasRect.left;
-      const y = e.clientY - canvasRect.top;
+    if (drawingMode && isDrawing && pageRef.current) { // canvasRef を pageRef に変更
+      const pageEl = pageRef.current; // canvasEl を pageEl に変更
+      const pageRect = pageEl.getBoundingClientRect(); // canvasRect を pageRect に変更
+      // const computedStyle = window.getComputedStyle(pageEl); // pageRef には padding がないと想定されるためコメントアウト
+      // const paddingLeft = parseFloat(computedStyle.paddingLeft);
+      // const paddingTop = parseFloat(computedStyle.paddingTop);
+
+      const x = e.clientX - pageRect.left; // canvasRect を pageRect に変更、padding計算は削除
+      const y = e.clientY - pageRect.top;  // canvasRect を pageRect に変更、padding計算は削除
       setCurrentPath(prevPath => `${prevPath} L ${x} ${y}`);
       return;
     }
@@ -1237,9 +1250,11 @@ const AlbumEdit: React.FC = () => {
           onMouseUp={handleCanvasMouseUp}     // General mouse up to finalize actions
           onMouseLeave={handleMouseLeaveCanvas} // Handle mouse leaving canvas area
           style={{ cursor: drawingMode ? 'crosshair' : (isDraggingObject ? 'grabbing' : 'default') }}
+          ref={canvasRef}
         >
           <div
             className="album-page-representation"
+            ref={pageRef} // pageRef を設定
             onDrop={handleDrop} // Drop items onto the page representation
             // MouseDown/Move/Up for objects are handled by the objects themselves or the main canvas listeners
             // No specific mouse events needed here unless for page-specific interactions not object-related
