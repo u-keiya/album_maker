@@ -542,6 +542,73 @@ const AlbumEdit: React.FC = () => {
     setActiveTab(tab);
   };
 
+  const handlePhotoUploadDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Optional: Add some visual feedback for drag over
+    // e.currentTarget.classList.add('drag-over-active');
+  };
+
+  const handlePhotoUploadDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // e.currentTarget.classList.remove('drag-over-active');
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      console.log('Files dropped for upload:', files);
+      // TODO: Implement actual file upload logic here
+      // For each file:
+      // 1. Validate if it's an image
+      // 2. Create FormData
+      // 3. Call POST /api/photos
+      // 4. Update photos state with the response
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('認証トークンがありません。再度ログインしてください。');
+        return;
+      }
+
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) {
+          console.warn(`Skipping non-image file: ${file.name}`);
+          continue;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const response = await fetch('/api/photos', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              // 'Content-Type': 'multipart/form-data' is set automatically by browser for FormData
+            },
+            body: formData,
+          });
+
+          if (response.ok) {
+            const newPhoto: Photo = await response.json();
+            console.log('Photo uploaded successfully:', newPhoto);
+            setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
+            // Optionally, update the album state if photos are directly tied to it
+            // or re-fetch album data if the photo list is part of it.
+          } else {
+            const errorData = await response.json();
+            console.error('Failed to upload photo:', response.status, errorData);
+            alert(`写真のアップロードに失敗しました: ${file.name} - ${errorData.message || response.status}`);
+          }
+        } catch (error) {
+          console.error('Error uploading photo:', file.name, error);
+          alert(`写真のアップロード中にエラーが発生しました: ${file.name}`);
+        }
+      }
+    }
+  };
+
+
   const handleAddTextObject = async () => {
     if (!album?.albumId || !currentPageId) {
       alert('アルバムまたはページが選択されていません。');
@@ -1497,7 +1564,11 @@ const AlbumEdit: React.FC = () => {
           </div>
           <div className="sidebar-content">
             {activeTab === 'photos' && (
-              <>
+              <div
+                className="sidebar-content photos-content"
+                onDragOver={handlePhotoUploadDragOver}
+                onDrop={handlePhotoUploadDrop}
+              >
                 <p>アップロード済み写真:</p>
                 {photos.map(photo => (
                   <div
@@ -1511,7 +1582,7 @@ const AlbumEdit: React.FC = () => {
                     <span>{photo.name}</span>
                   </div>
                 ))}
-              </>
+              </div>
             )}
             {activeTab === 'stickers' && (
               <>

@@ -22,7 +22,12 @@
         - **input**: e: React.MouseEvent<HTMLDivElement>
         - **output**: void
 - **function name**: handleCanvasMouseMove
-    - **short description**: キャンバス上でマウスが移動したときに呼び出され、オブジェクトのドラッグ、リサイズ、回転操作中の表示を更新する。
+    - **short description**: キャンバス上でマウスが移動したときに呼び出され、オブジェクトのドラッグ、リサイズ、回転操作、およびペン描画中の表示を更新する。ペン描画時はページ要素 (`.album-page-representation`) 基準で座標計算を行う。
+    - **input / output**:
+        - **input**: e: React.MouseEvent<HTMLDivElement>
+        - **output**: void
+- **function name**: handleDrawingMouseDown
+    - **short description**: ペン描画開始時のマウス座標計算を、ページ要素 (`.album-page-representation`) 基準に変更。
     - **input / output**:
         - **input**: e: React.MouseEvent<HTMLDivElement>
         - **output**: void
@@ -94,3 +99,16 @@
         - **Input**: albumId (in path parameter), JWT token (in header)
         - **Output (Success 200)**: { albumId: string, title: string, createdAt: string, updatedAt: string, pages: [ { pageId: string, pageNumber: number, objects: [ { objectId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string } ] } ] }
         - **Output (Error 401/403/404/500)**: { error: string, message: string }
+### File: frontend/src/components/AlbumEdit.tsx
+
+  - **classname**: AlbumEdit (React Functional Component)
+  - **function name**: handlePhotoUploadDragOver
+      - **short description**: サイドバーの写真タブエリアでのドラッグオーバーイベントを処理し、ドロップ操作を許可します。
+      - **input / output**:
+          - **input**: e: React.DragEvent&lt;HTMLDivElement&gt;
+          - **output**: void
+  - **function name**: handlePhotoUploadDrop
+      - **short description**: サイドバーの写真タブエリアにファイルがドロップされた際に、ファイルを写真アップロードAPIに送信し、成功した場合に写真リストを更新します。
+      - **input / output**:
+          - **input**: e: React.DragEvent&lt;HTMLDivElement&gt;
+          - **output**: Promise&lt;void&gt;
