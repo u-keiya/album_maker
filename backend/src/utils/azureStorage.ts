@@ -22,8 +22,8 @@ export function getBlobUrlWithSas(containerClient: ContainerClient, blobName: st
     console.error('Storage credentials or container client not initialized for SAS token generation.');
     // SASなしのURLを返すか、エラーを投げるか、アプリケーションの要件によります。
     // ここでは、SASなしのURLを返しますが、本番環境ではエラー処理を検討してください。
-    const blobClient = containerClient.getBlobClient(blobName);
-    return blobClient.url; // フォールバックとしてSASなしのURL
+    const blobClient = containerClient ? containerClient.getBlobClient(blobName) : null;
+    return blobClient ? blobClient.url : null;
   }
 
   const sasOptions = {

@@ -91,8 +91,11 @@ router.post('/', authenticateToken, upload.single('file'), async (req: Request, 
     newPhoto.user_id = userId;
     // newPhoto.file_path = blockBlobClient.url; // Original direct URL
     const blobUrlWithSas = containerClient ? getBlobUrlWithSas(containerClient, blobName) : blockBlobClient.url;
-    if (!blobUrlWithSas || !blobUrlWithSas.includes('?sig=')) { // Check if SAS token is likely present
-        console.warn(`Failed to generate SAS token for blob: ${blobName} or SAS token is missing. Falling back to direct URL.`);
+
+    const hasSasToken = blobUrlWithSas ? blobUrlWithSas.includes('sig=') : false; // 'sig=' が含まれているか確認
+
+    if (!blobUrlWithSas || !hasSasToken) { // Check if SAS token is likely present
+        console.warn(`Failed to generate SAS token for blob: ${blobName} or SAS token is missing (sig= not found). Falling back to direct URL.`);
         newPhoto.file_path = blockBlobClient.url; // Fallback
     } else {
         newPhoto.file_path = blobUrlWithSas;
