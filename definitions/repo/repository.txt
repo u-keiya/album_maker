@@ -17,7 +17,7 @@ The content is organized as follows:
 2. Repository information
 3. Directory structure
 4. Repository files (if enabled)
-4. Multiple file entries, each consisting of:
+5. Multiple file entries, each consisting of:
   a. A separator line (================)
   b. The file path (File: path/to/file)
   c. Another separator line
@@ -41,8 +41,6 @@ Notes:
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
 
-Additional Info:
-----------------
 
 ================================================================
 Directory Structure
@@ -56,6 +54,7 @@ backend/
       AlbumObject.ts
       AlbumPage.ts
       Photo.ts
+      Sticker.ts
       User.ts
     middleware/
       authMiddleware.ts
@@ -65,6 +64,9 @@ backend/
       albums.ts
       auth.ts
       photos.ts
+      stickers.ts
+    utils/
+      azureStorage.ts
     index.ts
   data-source.ts
   package.json
@@ -79,6 +81,7 @@ definitions/
     ui_design.md
   repo/
     implementation.txt
+    repository.txt
   requirements/
     business_requirements.md
     system_requirements.md
@@ -118,229 +121,470 @@ schedule.txt
 Files
 ================================================================
 
-Okay, I will rewrite the source code information from the provided file in the format you requested.
-
 ## Source Code Description
 
 Here is the source code information for each file, formatted as requested:
 
+### File: .repomix/bundles.json
+
+  - **short description**: This file contains an empty JSON object under the "bundles" key. [cite: 233] It is likely a configuration or output file for the Repomix tool. [cite: 234]
+
 ### File: backend/src/entities/Album.ts
 
   - **classname**: Album
-      - **short description**: Represents an album entity in the database. It includes properties like album ID, user ID, title, and timestamps. It also defines relationships with User and AlbumPage entities. [cite: 16, 21]
+      - **short description**: Represents an album entity in the database. [cite: 99] It includes properties like album ID, user ID, title, and timestamps. It also defines relationships with User and AlbumPage entities. [cite: 99, 100]
       - **input / output**: Not applicable for class definition.
 
 ### File: backend/src/entities/AlbumObject.ts
 
   - **classname**: AlbumObject
-      - **short description**: Represents an object (like a photo, sticker, text, or drawing) within an album page. It defines properties such as object ID, page ID, type, position, dimensions, rotation, z-index, content data, and timestamps. It also defines a relationship with the AlbumPage entity.
+      - **short description**: Represents an object (like a photo, sticker, text, or drawing) within an album page. [cite: 101, 102] It defines properties such as object ID, page ID, type, position, dimensions, rotation, z-index, content data, and timestamps. [cite: 102] It also defines a relationship with the AlbumPage entity. [cite: 103]
       - **input / output**: Not applicable for class definition.
 
 ### File: backend/src/entities/AlbumPage.ts
 
   - **classname**: AlbumPage
-      - **short description**: Represents a page within an album. It includes properties like page ID, album ID, page number, and timestamps. It defines relationships with Album and AlbumObject entities and has a unique constraint on album ID and page number. [cite: 34]
+      - **short description**: Represents a page within an album. [cite: 104] It includes properties like page ID, album ID, page number, and timestamps. [cite: 105] It defines relationships with Album and AlbumObject entities and has a unique constraint on album ID and page number. [cite: 106, 107]
       - **input / output**: Not applicable for class definition.
 
 ### File: backend/src/entities/Photo.ts
 
   - **classname**: Photo
-      - **short description**: Represents a photo entity in the database. It includes properties like photo ID, user ID, file path, original filename, upload timestamp, file size, and MIME type. It also defines a relationship with the User entity. [cite: 40, 47]
+      - **short description**: Represents a photo entity in the database. [cite: 108] It includes properties like photo ID, user ID, file path, original filename, upload timestamp, file size, and MIME type. [cite: 109] It also defines a relationship with the User entity. [cite: 110]
+      - **input / output**: Not applicable for class definition.
+
+### File: backend/src/entities/Sticker.ts
+
+  - **classname**: Sticker
+      - **short description**: Defines the Sticker entity with properties such as sticker ID, name, category, file paths, tags, and timestamps. [cite: 1543]
       - **input / output**: Not applicable for class definition.
 
 ### File: backend/src/entities/User.ts
 
   - **classname**: User
-      - **short description**: Represents a user entity in the database. It includes properties like user ID, username, password hash, and timestamps. It also defines relationships with Album and Photo entities. [cite: 48, 49, 55]
+      - **short description**: Represents a user entity in the database. [cite: 111] It includes properties like user ID, username, password hash, and timestamps. It also defines relationships with Album and Photo entities. [cite: 112, 113]
       - **input / output**: Not applicable for class definition.
+
+### File: backend/src/middleware/authMiddleware.ts
+
+  - **function name**: authenticateToken
+      - **short description**: Express middleware function to authenticate requests using a JWT token from the Authorization header. [cite: 236] It verifies the token and, if valid, attaches the decoded user payload to the `req.user` object. [cite: 236, 237]
+      - **input / output**:
+          - **input**: req: Request, res: Response, next: NextFunction
+          - **output**: void (sends response on error or calls `next()` on success)
 
 ### File: backend/src/migrations/1746517213608-ApplyDatabaseSchema.ts
 
   - **classname**: ApplyDatabaseSchema1746517213608
-      - **short description**: This class implements the TypeORM MigrationInterface to apply and revert database schema changes. [cite: 56]
+      - **short description**: This class implements the TypeORM MigrationInterface to apply and revert database schema changes. [cite: 114, 115]
       - **function name**: up
-          - **short description**: Executes the database migration to create tables (album\_objects, album\_pages, albums, photos, users) and their respective columns, constraints, and indexes. [cite: 56, 62, 63, 64, 65]
+          - **short description**: Executes the database migration to create tables (album\_objects, album\_pages, albums, photos, users, stickers) and their respective columns, constraints, and indexes. [cite: 115, 116, 312, 313]
           - **input / output**:
               - **input**: queryRunner: QueryRunner
               - **output**: Promise\<void\>
       - **function name**: down
-          - **short description**: Reverts the database migration by dropping the tables and indexes created in the `up` method. [cite: 66, 67, 68, 69, 70]
+          - **short description**: Reverts the database migration by dropping the tables and indexes created in the `up` method. [cite: 117, 314, 315]
           - **input / output**:
               - **input**: queryRunner: QueryRunner
               - **output**: Promise\<void\>
 
+### File: backend/src/routes/albums.ts
+
+  - **function name**: POST /
+      - **short description**: Creates a new album with an initial page for the authenticated user. [cite: 124]
+      - **input / output**:
+          - **Input**: { "title": "string (optional, max 100)" } (in request body) [cite: 124]
+          - **Output (Success 201)**: { "albumId": "string (uuid)", "title": "string", "createdAt": "string (date-time)", "updatedAt": "string (date-time)", "pages": [{ "pageId": "string (uuid)", "pageNumber": 1 }] } [cite: 124]
+          - **Output (Error 400/401/404/500)**: { "error": "string", "message": "string" } [cite: 124]
+  - **function name**: GET /
+      - **short description**: Retrieves a list of albums owned by the authenticated user. [cite: 125, 126]
+      - **input / output**:
+          - **Input**: None (JWT token in header) [cite: 126]
+          - **Output (Success 200)**: [ { "albumId": "string (uuid)", "title": "string", "createdAt": "string (date-time)", "updatedAt": "string (date-time)" } ] [cite: 126]
+          - **Output (Error 401/500)**: { "error": "string", "message": "string" } [cite: 126]
+  - **function name**: DELETE /:albumId
+      - **short description**: Deletes a specific album owned by the authenticated user, including associated pages and objects (via cascading). [cite: 127, 128]
+      - **input / output**:
+          - **Input**: albumId (in path parameter), JWT token (in header) [cite: 128]
+          - **Output (Success 204)**: No Content [cite: 128]
+          - **Output (Error 401/403/404/500)**: { "error": "string", "message": "string" } [cite: 128]
+  - **function name**: POST /:albumId/pages (async function)
+      - **short description**: 指定されたアルバムに新しいページを追加するAPIエンドポイント。 [cite: 129]
+      - **input / output**:
+          - **Input**: albumId (in path parameter), JWT token (in header) [cite: 129]
+          - **Output (Success 201)**: { "pageId": "string (uuid)", "pageNumber": "integer" } [cite: 129]
+          - **Output (Error 401/403/404/500)**: { "error": "string", "message": "string" } [cite: 129]
+  - **function name**: POST /:albumId/objects (async function)
+      - **short description**: 指定されたアルバムのページに新しいオブジェクト（写真、ステッカー、テキスト、描画）を追加するAPIエンドポイント。 [cite: 130]
+      - **input / output**:
+          - **Input**: albumId (in path parameter), Request body { pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation?: number, zIndex?: number, contentData: object }, JWT token (in header) [cite: 130]
+          - **Output (Success 201)**: { objectId: string, pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string } [cite: 130]
+          - **Output (Error 400/401/403/404/500)**: { error: string, message: string } [cite: 130]
+  - **function name**: PUT /:albumId/objects/:objectId (async function)
+      - **short description**: 指定されたアルバムのページ上の既存のオブジェクトを更新するAPIエンドポイント。content\_data をJSON文字列として保存するよう修正。レスポンスでは content\_data をJSONオブジェクトとして返すよう修正。 [cite: 131, 1554]
+      - **input / output**:
+          - **Input**: albumId, objectId (in path parameters), Request body { positionX?: number, positionY?: number, width?: number, height?: number, rotation?: number, zIndex?: number, contentData?: object | string }, JWT token (in header) [cite: 132, 1555]
+          - **Output (Success 200)**: { objectId: string, pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string } [cite: 132, 1555]
+          - **Output (Error 400/401/403/404/500)**: { error: string, message: string } [cite: 132, 1555]
+  - **function name**: DELETE /:albumId/objects/:objectId (async function)
+      - **short description**: 指定されたアルバムのページ上のオブジェクトを削除するAPIエンドポイント。 [cite: 132]
+      - **input / output**:
+          - **Input**: albumId, objectId (in path parameters), JWT token (in header) [cite: 133]
+          - **Output (Success 204)**: No Content [cite: 133]
+          - **Output (Error 400/401/403/404/500)**: { error: string, message: string } [cite: 133]
+  - **function name**: GET /:albumId (async function)
+      - **short description**: 指定されたIDのアルバムの詳細情報（ページリスト、各ページのオブジェクトリストを含む）を取得するAPIエンドポイント。レスポンスの object.content\_data をJSONオブジェクトとして返すよう修正。 [cite: 1556]
+      - **input / output**:
+          - **Input**: albumId (in path parameter), JWT token (in header) [cite: 1556]
+          - **Output (Success 200)**: { albumId: string, title: string, createdAt: string, updatedAt: string, pages: [ { pageId: string, pageNumber: number, objects: [ { objectId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string } ] } ] } [cite: 1556]
+          - **Output (Error 401/403/404/500)**: { error: string, message: string } [cite: 1556]
+
 ### File: backend/src/routes/auth.ts
 
-  - **classname**: (なし)
-  - **function name**: POST /auth/register handler (async function)
-      - **short description**: ユーザー名とパスワードを受け取り、ユーザーを新規登録し、JWTを返すAPIエンドポイント。 [cite: 845]
+  - **function name**: POST /register handler (async function)
+      - **short description**: ユーザー名とパスワードを受け取り、ユーザーを新規登録し、JWTを返すAPIエンドポイント。 [cite: 117]
       - **input / output**:
-          - **Input**: Request body { username: string, password: string } [cite: 845]
-          - **Output (Success)**: Response body { token: string, userId: string, username: string }, Status 201 [cite: 845]
-          - **Output (Error)**: Response body { error: string, message: string, details?: any[] }, Status 400, 409, 500 [cite: 845]
-  - **function name**: POST /auth/login handler (async function)
-      - **short description**: ユーザー名とパスワードを受け取り、認証を行い、成功した場合にJWTを返すAPIエンドポイント。 [cite: 846]
+          - **Input**: Request body { username: string, password: string } [cite: 118]
+          - **Output (Success)**: Response body { token: string, userId: string, username: string }, Status 201 [cite: 118]
+          - **Output (Error)**: Response body { error: string, message: string, details?: any[] }, Status 400, 409, 500 [cite: 118]
+  - **function name**: POST /login handler (async function)
+      - **short description**: ユーザー名とパスワードを受け取り、認証を行い、成功した場合にJWTを返すAPIエンドポイント。 [cite: 119]
       - **input / output**:
-          - **Input**: Request body { username: string, password: string } [cite: 846]
-          - **Output (Success)**: Response body { token: string, userId: string, username: string }, Status 200 [cite: 846]
-          - **Output (Error)**: Response body { error: string, message: string, details?: any[] }, Status 400, 401, 500 [cite: 846]
+          - **Input**: Request body { username: string, password: string } [cite: 119]
+          - **Output (Success)**: Response body { token: string, userId: string, username: string }, Status 200 [cite: 119]
+          - **Output (Error)**: Response body { error: string, message: string, details?: any[] }, Status 400, 401, 500 [cite: 119]
   - **function name**: validate
-      - **short description**: Middleware to handle validation errors from express-validator. If validation errors exist, it sends a 400 response with error details. [cite: 347, 348]
+      - **short description**: Middleware to handle validation errors from express-validator. [cite: 120] If validation errors exist, it sends a 400 response with error details. [cite: 120, 121]
       - **input / output**:
           - **input**: req: Request, res: Response, next: NextFunction
           - **output**: void (sends response or calls next middleware)
 
 ### File: backend/src/routes/photos.ts
 
-  - **classname**: (なし)
-  - **function name**: POST /photos handler (async function)
-      - **short description**: 新しい写真を認証済みユーザーとしてアップロードし、Azure Blob Storage に保存後、データベースに写真情報を記録するAPIエンドポイント。 [cite: 851]
+  - **function name**: POST / handler (async function)
+      - **short description**: 新しい写真を認証済みユーザーとしてアップロードし、Azure Blob Storage に保存後、データベースに写真情報を記録するAPIエンドポイント。 [cite: 121]
       - **input / output**:
-          - **Input**: FormData with 'file' (image file), JWT token (in header) [cite: 851]
-          - **Output (Success 201)**: { "photoId": "string (uuid)", "filePath": "string (url)", "originalFilename": "string", "uploadedAt": "string (date-time)", "fileSize": "number", "mimeType": "string" } [cite: 851]
-          - **Output (Error 400/401/404/500)**: { "error": "string", "message": "string", "details"?: string } [cite: 851]
-  - **function name**: DELETE /photos/:photoId handler (async function)
-      - **short description**: 指定された photoId の写真を認証済みユーザーとして Azure Blob Storage とデータベースから削除するAPIエンドポイント。 [cite: 852]
+          - **Input**: FormData with 'file' (image file), JWT token (in header) [cite: 122]
+          - **Output (Success 201)**: { "photoId": "string (uuid)", "filePath": "string (url)", "originalFilename": "string", "uploadedAt": "string (date-time)", "fileSize": "number", "mimeType": "string" } [cite: 122]
+          - **Output (Error 400/401/404/500)**: { "error": "string", "message": "string", "details"?: string } [cite: 122]
+  - **function name**: DELETE /:photoId handler (async function)
+      - **short description**: 指定された photoId の写真を認証済みユーザーとして Azure Blob Storage とデータベースから削除するAPIエンドポイント。 [cite: 122]
       - **input / output**:
-          - **Input**: photoId (in path parameter), JWT token (in header) [cite: 852]
-          - **Output (Success 204)**: No Content [cite: 852]
-          - **Output (Error 400/401/404/500)**: { "error": "string", "message": "string", "details"?: string } [cite: 852]
+          - **Input**: photoId (in path parameter), JWT token (in header) [cite: 123]
+          - **Output (Success 204)**: No Content [cite: 123]
+          - **Output (Error 400/401/404/500)**: { "error": "string", "message": "string", "details"?: string } [cite: 123]
 
-### File: backend/src/routes/albums.ts
+### File: backend/src/routes/stickers.ts
 
-  - **classname**: (なし)
-  - **function name**: POST /
-      - **short description**: Creates a new album with an initial page for the authenticated user. [cite: 848]
+  - **function name**: GET /stickers
+      - **short description**: 登録されている全てのステッカー情報を取得する。 [cite: 1544]
       - **input / output**:
-          - **Input**: { "title": "string (optional, max 100)" } (in request body) [cite: 848]
-          - **Output (Success 201)**: { "albumId": "string (uuid)", "title": "string", "createdAt": "string (date-time)", "updatedAt": "string (date-time)", "pages": [{ "pageId": "string (uuid)", "pageNumber": 1 }] } [cite: 848]
-          - **Output (Error 400/401/404/500)**: { "error": "string", "message": "string" } [cite: 848]
-  - **function name**: GET /
-      - **short description**: Retrieves a list of albums owned by the authenticated user. [cite: 849]
+          - **Input**: JWT token (in header)
+          - **Output (Success 200)**: Sticker[] (JSON array of sticker objects) [cite: 1545]
+          - **Output (Error 500)**: { error: "ServerError", message: "Failed to fetch stickers." } [cite: 1545]
+  - **function name**: GET /stickers/:stickerId
+      - **short description**: 指定されたIDのステッカー情報を取得する。 [cite: 1545]
       - **input / output**:
-          - **Input**: None (JWT token in header) [cite: 849]
-          - **Output (Success 200)**: [ { "albumId": "string (uuid)", "title": "string", "createdAt": "string (date-time)", "updatedAt": "string (date-time)" } ] [cite: 849]
-          - **Output (Error 401/500)**: { "error": "string", "message": "string" } [cite: 849]
-  - **function name**: DELETE /:albumId
-      - **short description**: Deletes a specific album owned by the authenticated user, including associated pages and objects (via cascading). [cite: 850]
+          - **Input**: stickerId (in path parameter, UUID), JWT token (in header)
+          - **Output (Success 200)**: Sticker (JSON object of the sticker) [cite: 1546]
+          - **Output (Error 404)**: { error: "NotFound", message: "Sticker not found." } [cite: 1546]
+          - **Output (Error 500)**: { error: "ServerError", message: "Failed to fetch sticker." } [cite: 1547]
+  - **function name**: POST /stickers
+      - **short description**: 新しいステッカー情報を登録する (要管理者権限 - 現在はプレースホルダー)。 [cite: 1547]
       - **input / output**:
-          - **Input**: albumId (in path parameter), JWT token (in header) [cite: 850]
-          - **Output (Success 204)**: No Content [cite: 850]
-          - **Output (Error 401/403/404/500)**: { "error": "string", "message": "string" } [cite: 850]
-  - **function name**: POST /albums/:albumId/pages handler (async function)
-      - **short description**: 指定されたアルバムに新しいページを追加するAPIエンドポイント。 [cite: 852]
+          - **Input**: Request body { name: string, file\_path: string (URL), category?: string, thumbnail\_path?: string (URL), tags?: string[] }, JWT token (in header)
+          - **Output (Success 201)**: Sticker (JSON object of the created sticker) [cite: 1548]
+          - **Output (Error 400)**: { errors: [...] } (Validation errors)
+          - **Output (Error 409)**: { error: "Conflict", message: "Sticker with this name or file path might already exist." } [cite: 1548, 1549]
+          - **Output (Error 500)**: { error: "ServerError", message: "Failed to create sticker." } [cite: 1550]
+  - **function name**: PUT /stickers/:stickerId
+      - **short description**: 指定されたIDのステッカー情報を更新する (要管理者権限 - 現在はプレースホルダー)。 [cite: 1550]
       - **input / output**:
-          - **Input**: albumId (in path parameter), JWT token (in header) [cite: 852]
-          - **Output (Success 201)**: { "pageId": "string (uuid)", "pageNumber": "integer" } [cite: 852]
-          - **Output (Error 401/403/404/500)**: { "error": "string", "message": "string" } [cite: 852]
-  - **function name**: POST /albums/:albumId/objects handler (async function)
-      - **short description**: 指定されたアルバムのページに新しいオブジェクト（写真、ステッカー、テキスト、描画）を追加するAPIエンドポイント。 [cite: 853]
+          - **Input**: stickerId (in path parameter, UUID), Request body { name?: string, file\_path?: string (URL), category?: string, thumbnail\_path?: string (URL), tags?: string[] }, JWT token (in header)
+          - **Output (Success 200)**: Sticker (JSON object of the updated sticker) [cite: 1551]
+          - **Output (Error 400)**: { errors: [...] } (Validation errors)
+          - **Output (Error 404)**: { error: "NotFound", message: "Sticker not found." } [cite: 1551]
+          - **Output (Error 500)**: { error: "ServerError", message: "Failed to update sticker." } [cite: 1552]
+  - **function name**: DELETE /stickers/:stickerId
+      - **short description**: 指定されたIDのステッカー情報を削除する (要管理者権限 - 現在はプレースホルダー)。 [cite: 1552]
       - **input / output**:
-          - **Input**: albumId (in path parameter), Request body { pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation?: number, zIndex?: number, contentData: object }, JWT token (in header) [cite: 853]
-          - **Output (Success 201)**: { objectId: string, pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string } [cite: 853]
-          - **Output (Error 400/401/403/404/500)**: { error: string, message: string } [cite: 853]
-  - **function name**: PUT /albums/:albumId/objects/:objectId handler (async function)
-      - **short description**: 指定されたアルバムのページ上の既存のオブジェクトを更新するAPIエンドポイント。 [cite: 854]
+          - **Input**: stickerId (in path parameter, UUID), JWT token (in header)
+          - **Output (Success 204)**: No Content [cite: 1553]
+          - **Output (Error 404)**: { error: "NotFound", message: "Sticker not found." } [cite: 1553]
+          - **Output (Error 500)**: { error: "ServerError", message: "Failed to delete sticker." } [cite: 1554]
+
+### File: backend/src/utils/azureStorage.ts
+
+  - **function name**: getBlobUrlWithSas
+      - **short description**: Generates a Blob URL with a SAS token for read access.
       - **input / output**:
-          - **Input**: albumId, objectId (in path parameters), Request body { positionX?: number, positionY?: number, width?: number, height?: number, rotation?: number, zIndex?: number, contentData?: object }, JWT token (in header) [cite: 854]
-          - **Output (Success 200)**: { objectId: string, pageId: string, type: string, positionX: number, positionY: number, width: number, height: number, rotation: number, zIndex: number, contentData: object, createdAt: string, updatedAt: string } [cite: 854]
-          - **Output (Error 400/401/403/404/500)**: { error: string, message: string } [cite: 854]
-  - **function name**: DELETE /albums/:albumId/objects/:objectId handler (async function)
-      - **short description**: 指定されたアルバムのページ上のオブジェクトを削除するAPIエンドポイント。 [cite: 855]
-      - **input / output**:
-          - **Input**: albumId, objectId (in path parameters), JWT token (in header) [cite: 855]
-          - **Output (Success 204)**: No Content [cite: 855]
-          - **Output (Error 400/401/403/404/500)**: { error: string, message: string } [cite: 855]
+          - **input**: containerClient: ContainerClient, blobName: string
+          - **output**: string | null (URL with SAS token or null/original URL on failure)
 
 ### File: backend/src/index.ts
 
-  - **short description**: This is the main entry point for the backend Express application. It sets up middleware (CORS, JSON parsing), mounts routers for different functionalities (auth, albums, photos), initializes the database connection, and starts the server. It also includes generic error handling middleware. [cite: 758, 759, 760, 761, 762, 763, 764, 766]
+  - **short description**: This is the main entry point for the backend Express application. [cite: 134] It sets up middleware (CORS, JSON parsing), mounts routers for different functionalities (auth, albums, photos, stickers), initializes the database connection, and starts the server. [cite: 134, 135, 1024, 1025] It also includes generic error handling middleware. [cite: 135]
 
 ### File: backend/data-source.ts
 
-  - **short description**: This file configures and exports the TypeORM DataSource for connecting to the MS SQL database. It reads database connection parameters from environment variables. [cite: 400, 401, 402, 403]
+  - **short description**: This file configures and exports the TypeORM DataSource for connecting to the MS SQL database. [cite: 136] It reads database connection parameters from environment variables. [cite: 136, 410]
   - **object name**: dataSourceOptions
-      - **short description**: An object containing the configuration options for the TypeORM DataSource, including database type, host, port, username, password, database name, synchronization settings, logging, entity paths, migration paths, and other MSSQL specific options. [cite: 401, 402]
+      - **short description**: An object containing the configuration options for the TypeORM DataSource, including database type, host, port, username, password, database name, synchronization settings, logging, entity paths, migration paths, and other MSSQL specific options. [cite: 137, 411]
       - **input / output**: Not applicable for an object.
   - **object name**: dataSource
-      - **short description**: An instance of the TypeORM DataSource created with the `dataSourceOptions`. This is the main object used to interact with the database. [cite: 403]
+      - **short description**: An instance of the TypeORM DataSource created with the `dataSourceOptions`. [cite: 138, 139] This is the main object used to interact with the database. [cite: 139, 140]
       - **input / output**: Not applicable for an object.
+
+### File: backend/package.json
+
+  - **short description**: This is the `package.json` file for the backend Node.js project. [cite: 229] It defines project metadata, scripts (for testing, development, TypeORM migrations), keywords, author, license, description, engine requirements (Node.js v22+), devDependencies (like TypeScript, Nodemon, testing types), and dependencies (like Express, TypeORM, Azure Storage Blob, bcrypt, JWT). [cite: 229, 230, 860, 861]
 
 ### File: backend/tsconfig.json
 
-  - **short description**: This is a TypeScript configuration file for the backend project. It specifies compiler options such as the target JavaScript version, module system, enabling experimental decorators, and strict type checking. [cite: 410, 414, 415, 423, 474, 476, 477, 482, 498]
+  - **short description**: This is a TypeScript configuration file for the backend project. [cite: 141, 142] It specifies compiler options such as the target JavaScript version, module system, enabling experimental decorators, and strict type checking. [cite: 142, 143, 423, 474, 476, 477, 482, 498, 491]
 
 ### File: definitions/architect/api\_specification.md
 
-  - **short description**: This markdown file defines the API specification for the "アルバムメーカー" (Album Maker) application's backend. It details authentication endpoints, user management, album management, photo management, and album editing functionalities, including request/response formats and status codes. [cite: 71, 77, 82, 88, 90, 93, 99, 100, 102, 104, 105, 107, 108, 113, 117]
+  - **short description**: This markdown file defines the API specification for the "アルバムメーカー" (Album Maker) application's backend. [cite: 144] It details authentication endpoints, user management, album management, photo management, album editing functionalities, and sticker management including request/response formats and status codes. [cite: 144, 145, 508, 514, 519, 525, 530, 537, 539, 542, 544, 550, 554, 555]
 
 ### File: definitions/architect/component\_design.md
 
-  - **short description**: This markdown file describes the component design of the "アルバムメーカー" (Album Maker) application using a class diagram. It outlines the main components in the Backend API, Database, Frontend Application, and External Services, along with their relationships. [cite: 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 137]
+  - **short description**: This markdown file describes the component design of the "アルバムメーカー" (Album Maker) application using a class diagram. [cite: 146] It outlines the main components in the Backend API, Database, Frontend Application, and External Services, along with their relationships. [cite: 146, 147]
 
 ### File: definitions/architect/database\_schema.md
 
-  - **short description**: This document defines the database schema for the "アルバムメーカー" (Album Maker) application. It includes an Entity Relationship Diagram (ERD) and detailed definitions for tables such as `users`, `albums`, `photos`, `album_pages`, and `album_objects`, specifying column names, data types, constraints, and indexes. It also provides examples of the JSONB `content_data` structure for different object types. [cite: 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 163, 178, 204, 220, 264, 265, 266, 267]
+  - **short description**: This document defines the database schema for the "アルバムメーカー" (Album Maker) application. [cite: 148] It includes an Entity Relationship Diagram (ERD) and detailed definitions for tables such as `users`, `albums`, `photos`, `album_pages`, `album_objects`, and `stickers`, specifying column names, data types, constraints, and indexes. [cite: 148, 149, 566, 697] It also provides examples of the JSONB `content_data` structure for different object types. [cite: 150]
 
 ### File: definitions/architect/sequence\_diagrams.md
 
-  - **short description**: This document provides sequence diagrams illustrating the interactions between components for major use cases in the "アルバムメーカー" (Album Maker) application. The diagrams cover processes like login, user registration, album listing/creation, photo upload, and various album editing operations (adding/updating/deleting objects, downloading albums). [cite: 268, 269, 270, 271, 272, 273, 274, 275, 276, 278, 279, 281]
+  - **short description**: This document provides sequence diagrams illustrating the interactions between components for major use cases in the "アルバムメーカー" (Album Maker) application. [cite: 151] The diagrams cover processes like login, user registration, album listing/creation, photo upload, and various album editing operations (adding/updating/deleting objects, downloading albums). [cite: 151, 152]
 
 ### File: definitions/architect/system\_architecture.md
 
-  - **short description**: This document defines the system architecture for the "アルバムメーカー" (Album Maker) application. It outlines the system components including the frontend (React, TypeScript), backend API (Node.js, NestJS, TypeScript), database (Azure Database), and storage (Azure Blob Storage). It also provides an architecture overview diagram and describes the roles and interactions of these components. [cite: 499, 500, 501, 502, 503, 504, 505]
+  - **short description**: This document defines the system architecture for the "アルバムメーカー" (Album Maker) application. [cite: 153] It outlines the system components including the frontend (React, TypeScript), backend API (Node.js, NestJS, TypeScript), database (Azure Database), and storage (Azure Blob Storage). [cite: 153, 154] It also provides an architecture overview diagram and describes the roles and interactions of these components. [cite: 155]
 
 ### File: definitions/architect/ui\_design.md
 
-  - **short description**: This document outlines the UI design for the "アルバムメーカー" (Album Maker) application, including screen transition diagrams and detailed YAML descriptions of the Album List and Album Edit screens. It specifies the layout and components for each screen. [cite: 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528]
+  - **short description**: This document outlines the UI design for the "アルバムメーカー" (Album Maker) application, including screen transition diagrams and detailed YAML descriptions of the Album List and Album Edit screens. [cite: 156] It specifies the layout and components for each screen. [cite: 156]
 
 ### File: definitions/repo/implementation.txt
 
-  - **short description**: This file contains a structured description of various source code files, including their class names (if any), function names, short descriptions, and input/output specifications for those functions. It covers files from both the backend (routes) and frontend (components) of the "アルバムメーカー" application. [cite: 845, 846, 847, 848, 849, 850, 851, 852, 853, 854, 855, 856, 857]
+  - **short description**: This file contains a structured description of various source code files, including their class names (if any), function names, short descriptions, and input/output specifications for those functions. [cite: 157] It covers files from both the backend (routes, entities) and frontend (components) of the "アルバムメーカー" application. [cite: 157, 158, 1543, 1544, 1545, 1546, 1547, 1548, 1549, 1550, 1551, 1552, 1553, 1554, 1555, 1556, 1557, 1558, 1559]
+
+### File: definitions/repo/repository.txt
+
+  - **short description**: This file provides a summary and guidelines for a packed representation of a repository's contents, intended for AI systems. It details the file format, usage guidelines, and notes about excluded files. [cite: 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95]
 
 ### File: definitions/requirements/business\_requirements.md
 
-  - **short description**: This document outlines the business requirements for the "アルバムメーカー" (Album Maker) service. It describes the service overview, key features (photo uploading, album creation with drag-and-drop, decoration with text/stickers), and user operations. [cite: 282]
+  - **short description**: This document outlines the business requirements for the "アルバムメーカー" (Album Maker) service. [cite: 159] It describes the service overview, key features (photo uploading, album creation with drag-and-drop, decoration with text/stickers), and user operations. [cite: 159, 160, 238]
 
 ### File: definitions/requirements/system\_requirements.md
 
-  - **short description**: This document defines the system requirements for the "アルバムメーカー" (Album Maker) application. It details the product overview, objectives, system configuration (Azure services), technology stack (React, Node.js/NestJS), functional requirements (user management, album management, photo management, album editing features), non-functional requirements (skipped), screen designs, and use cases. [cite: 715, 716, 717, 718]
+  - **short description**: This document defines the system requirements for the "アルバムメーカー" (Album Maker) application. [cite: 161] It details the product overview, objectives, system configuration (Azure services), technology stack (React, Node.js/NestJS), functional requirements (user management, album management, photo management, album editing features), non-functional requirements (skipped), screen designs, and use cases. [cite: 161, 162, 862, 863, 864, 865]
 
 ### File: definitions/roadmap.md
 
-  - **short description**: This document outlines the development roadmap for the "アルバムメーカー" (Album Maker) application. It is divided into phases, detailing tasks, descriptions, priorities, responsible labels, statuses, and remarks for building the application, from foundational setup and core features (MVP) to extended album editing functionalities and quality improvements. [cite: 570, 571, 572, 573, 574, 575, 576, 577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600, 601, 602, 603, 604, 605, 606, 607, 608, 609, 610, 611, 612, 613, 614, 615, 616, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 652, 653, 654, 655, 656, 657, 658, 659, 660, 661, 662, 663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674, 675, 676, 677, 678, 679, 680, 681, 682, 683]
+  - **short description**: This document outlines the development roadmap for the "アルバムメーカー" (Album Maker) application. [cite: 163] It is divided into phases, detailing tasks, descriptions, priorities, responsible labels, statuses, and remarks for building the application, from foundational setup and core features (MVP) to extended album editing functionalities and quality improvements. [cite: 163, 164, 165, 908, 909, 910, 911, 912, 913, 914, 915, 916, 917, 918, 919, 920, 921, 922, 923, 924, 925, 926, 927, 928, 929, 930, 931, 932, 933, 934, 935, 936, 937, 938, 939, 940, 941, 942, 943, 944, 945, 946, 947, 948, 949, 950, 951, 952, 953, 954, 955, 956, 957, 958, 959, 960, 961, 962, 963, 964, 965, 966, 967, 968, 969, 970, 971, 972, 973, 974, 975, 976, 977, 978, 979, 980, 981, 982, 983, 984, 985, 986, 987, 988, 989, 990, 991, 992, 993, 994, 995, 996, 997, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021]
 
 ### File: frontend/public/index.html
 
-  - **short description**: This is the main HTML file for the React application. It serves as the entry point and includes placeholders for the React app to be injected into the `div` with the id "root". It also links to the manifest file and sets up basic meta tags. [cite: 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294]
+  - **short description**: This is the main HTML file for the React application. [cite: 166] It serves as the entry point and includes placeholders for the React app to be injected into the `div` with the id "root". [cite: 166, 167] It also links to the manifest file and sets up basic meta tags. [cite: 168, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250]
 
 ### File: frontend/public/manifest.json
 
-  - **short description**: This JSON file provides metadata for the web application, used when the app is installed on a user's mobile device or desktop. It includes information like the app's short name, name, icons for different sizes, start URL, display mode, theme color, and background color. [cite: 295]
+  - **short description**: This JSON file provides metadata for the web application, used when the app is installed on a user's mobile device or desktop. [cite: 169] It includes information like the app's short name, name, icons for different sizes, start URL, display mode, theme color, and background color. [cite: 170, 251]
 
 ### File: frontend/public/robots.txt
 
-  - **short description**: This file instructs web crawlers (like search engine bots) on which parts of the website they are allowed or disallowed to access. In this case, it allows all user-agents to crawl all parts of the site.
+  - **short description**: This file instructs web crawlers (like search engine bots) on which parts of the website they are allowed or disallowed to access. [cite: 171] In this case, it allows all user-agents to crawl all parts of the site. [cite: 172]
 
 ### File: frontend/src/components/AlbumEdit.css
 
-  - **short description**: This CSS file provides styles for the Album Edit component (`AlbumEdit.tsx`). It defines the layout and appearance of the album editing interface, including the header, toolbar, main canvas area, and sidebar. [cite: 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306]
+  - **short description**: This CSS file provides styles for the Album Edit component (`AlbumEdit.tsx`). [cite: 173] It defines the layout and appearance of the album editing interface, including the header, toolbar, main canvas area, and sidebar, as well as styles for selected objects, resize handles, delete buttons, and rotation handles. [cite: 173, 174, 866, 867, 868, 869, 870, 871, 872, 873, 874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899]
+
+### File: frontend/src/components/AlbumEdit.tsx
+
+  - **classname**: AlbumEdit (React Functional Component)
+      - **short description**: アルバム編集画面の基本レイアウト、ツールバー、サイドバーを提供するコンポーネント。写真のドラッグ＆ドロップによる配置、ページ追加、オブジェクト操作（移動、リサイズ、回転、削除）、テキスト編集、ペン描画機能を持つ。 [cite: 191, 1175]
+      - **input / output**:
+          - **input**: URLパラメータ (albumId) [cite: 191]
+          - **output**: アルバム編集画面のUI要素。 [cite: 191]
+      - **function name**: useEffect hook (for albumId)
+          - **short description**: Executes when `params.albumId` changes. [cite: 192] It sets the `albumId` state, fetches album details, photos, and stickers. [cite: 192, 193, 1189, 1190, 1191, 1192, 1193, 1194, 1195, 1196, 1197, 1198, 1199, 1200, 1201, 1202, 1203, 1204, 1205, 1206, 1207, 1208, 1209, 1210, 1211, 1212, 1213]
+          - **input / output**:
+              - **input**: `params.albumId` (from react-router-dom)
+              - **output**: void (updates state, logs messages)
+      - **function name**: useEffect hook (for currentPageId, album)
+          - **short description**: Executes when `currentPageId` or `album` state changes to update the `albumObjects` for the current page. [cite: 1214]
+          - **input / output**:
+              - **input**: `currentPageId`, `album`
+              - **output**: void (updates `albumObjects` state)
+      - **function name**: handleAddPage
+          - **short description**: Sends a POST request to the `/api/albums/:albumId/pages` endpoint to add a new page to the current album. [cite: 194, 1215, 1216, 1217, 1218, 1219, 1220, 1221, 1222, 1223, 1224] Requires an authentication token. [cite: 194]
+          - **input / output**:
+              - **input**: None
+              - **output**: void (logs messages, shows alerts, updates state)
+      - **function name**: handleItemDragStart
+          - **short description**: ドラッグ操作開始時に、ドラッグされた写真またはステッカー情報を保持する。 [cite: 195, 1225, 1226, 1227]
+          - **input / output**:
+              - **input**: React.DragEvent\<HTMLDivElement\>, item: Photo | Sticker, itemType: 'photo' | 'sticker' [cite: 195]
+              - **output**: なし (内部状態でdraggedItemを更新) [cite: 195]
+      - **function name**: handleDragOver
+          - **short description**: ドロップ操作を許可するために、dragoverイベントのデフォルト動作をキャンセルする。 [cite: 196, 1228]
+          - **input / output**:
+              - **input**: React.DragEvent\<HTMLDivElement\> [cite: 196]
+              - **output**: なし [cite: 196]
+      - **function name**: handleDrop
+          - **short description**: 写真またはステッカーがドロップされた際に、ドロップ位置とアイテム情報からオブジェクト作成APIを呼び出し、キャンバスにオブジェクトを追加する。 [cite: 196, 1229, 1230, 1231, 1232, 1233, 1234, 1235, 1236, 1237, 1238, 1239, 1240, 1241, 1242, 1243, 1244, 1245, 1246, 1247, 1248, 1249, 1250, 1251, 1252, 1253, 1254, 1255, 1256, 1257]
+          - **input / output**:
+              - **input**: React.DragEvent\<HTMLDivElement\> [cite: 196]
+              - **output**: なし (成功時: albumObjects状態を更新、失敗時: エラーアラート表示) [cite: 196]
+      - **function name**: handleSelectObject
+          - **short description**: Handles the selection of an object on the canvas. [cite: 1258]
+          - **input / output**:
+              - **input**: obj: AlbumObject
+              - **output**: void (updates `selectedObject` state)
+      - **function name**: handleCropButtonClick
+          - **short description**: Handles the click of the crop button for a selected photo object, initiating shape crop mode. [cite: 1259, 1260, 1261, 1262]
+          - **input / output**:
+              - **input**: None
+              - **output**: void (updates state)
+      - **function name**: handleConfirmCrop
+          - **short description**: Confirms the crop action for a photo, updates the object's contentData with crop information, and saves it to the server. [cite: 1263, 1264, 1265, 1266, 1267, 1268, 1269, 1270, 1271, 1272, 1273, 1274, 1275, 1276, 1277, 1278, 1279, 1280]
+          - **input / output**:
+              - **input**: None
+              - **output**: Promise\<void\>
+      - **function name**: handleTabChange
+          - **short description**: Handles switching between 'photos' and 'stickers' tabs in the sidebar. [cite: 1281]
+          - **input / output**:
+              - **input**: tab: 'photos' | 'stickers'
+              - **output**: void (updates `activeTab` state)
+      - **function name**: handlePhotoUploadDragOver
+          - **short description**: サイドバーの写真タブエリアでのドラッグオーバーイベントを処理し、ドロップ操作を許可します。 [cite: 1557, 1282]
+          - **input / output**:
+              - **input**: e: React.DragEvent\<HTMLDivElement\> [cite: 1558]
+              - **output**: void [cite: 1558]
+      - **function name**: handlePhotoUploadDrop
+          - **short description**: サイドバーの写真タブエリアにファイルがドロップされた際に、ファイルを写真アップロードAPIに送信し、成功した場合に写真リストを更新します。 [cite: 1559, 1283, 1284, 1285, 1286, 1287, 1288, 1289, 1290, 1291, 1292, 1293, 1294, 1295, 1296]
+          - **input / output**:
+              - **input**: e: React.DragEvent\<HTMLDivElement\> [cite: 1559]
+              - **output**: Promise\<void\> [cite: 1559]
+      - **function name**: handleAddTextObject
+          - **short description**: Adds a new text object to the current page by calling the API. [cite: 1297, 1298, 1299, 1300, 1301, 1302, 1303, 1304, 1305, 1306, 1307]
+          - **input / output**:
+              - **input**: None
+              - **output**: Promise\<void\>
+      - **function name**: handleTextObjectClick
+          - **short description**: Handles clicks on text objects to enable editing. [cite: 1308, 1309]
+          - **input / output**:
+              - **input**: obj: AlbumObject
+              - **output**: void (updates state for text editing)
+      - **function name**: handleTextEditComplete
+          - **short description**: Finalizes text editing and updates the text object on the server. [cite: 1310, 1311, 1312, 1313, 1314, 1315, 1316, 1317, 1318, 1319, 1320, 1321, 1322]
+          - **input / output**:
+              - **input**: None
+              - **output**: Promise\<void\>
+      - **function name**: handleTextStyleChange
+          - **short description**: Handles changes to text style (font, size, color, bold) and updates the local preview. [cite: 1323, 1324, 1325, 1326, 1327, 1328, 1329, 1330]
+          - **input / output**:
+              - **input**: styleProp: keyof typeof currentTextStyle, value: any
+              - **output**: void
+      - **function name**: updateObjectOnServer
+          - **short description**: オブジェクトの情報をサーバーに送信して更新する共通関数。 [cite: 1541, 1331, 1332, 1333, 1334, 1335, 1336, 1337, 1338, 1339, 1340, 1341, 1342, 1343]
+          - **input / output**:
+              - **input**: albumId: string, objectId: string, updatedFields: Partial\<AlbumObject\>
+              - **output**: Promise\<AlbumObject | null\> [cite: 1541]
+      - **function name**: handleObjectMouseDown
+          - **short description**: キャンバス上のオブジェクトがマウスでクリックされたときに呼び出され、オブジェクトの選択とドラッグ操作の開始を処理する。 [cite: 1541, 1344, 1345, 1346, 1347, 1348]
+          - **input / output**:
+              - **input**: e: React.MouseEvent\<HTMLDivElement\>, obj: AlbumObject
+              - **output**: void
+      - **function name**: handleObjectResizeMouseDown
+          - **short description**: オブジェクトのリサイズハンドルの `onMouseDown` イベントで呼び出され、リサイズ操作を開始する。 [cite: 1542, 1349, 1350, 1351]
+          - **input / output**:
+              - **input**: e: React.MouseEvent\<HTMLDivElement\>, handle: string
+              - **output**: void
+      - **function name**: handleObjectRotationMouseDown
+          - **short description**: オブジェクトの回転ハンドルの `onMouseDown` イベントで呼び出され、回転操作を開始する。 [cite: 1542, 1352, 1353, 1354, 1355, 1356, 1357, 1358, 1359, 1360]
+          - **input / output**:
+              - **input**: e: React.MouseEvent\<HTMLDivElement\> [cite: 1542]
+              - **output**: void
+      - **function name**: handleDrawingMouseDown
+          - **short description**: ペン描画開始時のマウス座標計算を、ページ要素 (`.album-page-representation`) 基準に変更。 [cite: 1543, 1361, 1362, 1363, 1364, 1365, 1366, 1367]
+          - **input / output**:
+              - **input**: e: React.MouseEvent\<HTMLDivElement\> [cite: 1543]
+              - **output**: void [cite: 1543]
+      - **function name**: handleCanvasMouseMove
+          - **short description**: キャンバス上でマウスが移動したときに呼び出され、オブジェクトのドラッグ、リサイズ、回転操作、およびペン描画中の表示を更新する。ペン描画時はページ要素 (`.album-page-representation`) 基準で座標計算を行う。 [cite: 1542, 1368, 1369, 1370, 1371, 1372, 1373, 1374, 1375, 1376, 1377, 1378, 1379, 1380, 1381, 1382, 1383, 1384, 1385, 1386, 1387, 1388, 1389, 1390, 1391, 1392, 1393, 1394, 1395]
+          - **input / output**:
+              - **input**: e: React.MouseEvent\<HTMLDivElement\>
+              - **output**: void
+      - **function name**: handleDrawingMouseUp
+          - **short description**: Finalizes a drawing path, creates a new drawing object, and saves it to the server. [cite: 1396, 1397, 1398, 1399, 1400, 1401, 1402, 1403, 1404, 1405, 1406, 1407, 1408, 1409, 1410, 1411]
+          - **input / output**:
+              - **input**: None
+              - **output**: Promise\<void\>
+      - **function name**: handleCanvasMouseUp
+          - **short description**: キャンバス上でマウスボタンが離されたときに呼び出され、オブジェクトのドラッグ、リサイズ、回転操作、または描画操作を完了し、サーバーに更新情報を送信する。 [cite: 1543, 1412, 1413, 1414, 1415, 1416, 1417, 1418, 1419, 1420, 1421, 1422, 1423, 1424, 1425, 1426, 1427]
+          - **input / output**:
+              - **input**: e: React.MouseEvent\<HTMLDivElement\>
+              - **output**: Promise\<void\>
+      - **function name**: handleCanvasMouseDown
+          - **short description**: Handles mouse down events on the main canvas, deselecting objects or starting a drawing path if in drawing mode. [cite: 1428, 1429]
+          - **input / output**:
+              - **input**: e: React.MouseEvent\<HTMLDivElement\>
+              - **output**: void
+      - **function name**: handleDeleteObject
+          - **short description**: 選択されたオブジェクトを削除する。APIを呼び出し、成功したらローカルの状態も更新する。 [cite: 1543, 1430, 1431, 1432, 1433, 1434, 1435, 1436, 1437, 1438, 1439]
+          - **input / output**:
+              - **input**: void [cite: 1543]
+              - **output**: Promise\<void\> [cite: 1543]
+      - **function name**: handleMouseLeaveCanvas
+          - **short description**: Handles mouse leaving the canvas area, potentially finalizing or canceling ongoing operations like drawing or object manipulation. [cite: 1440, 1441, 1442, 1443, 1444, 1445, 1446, 1447, 1448, 1449]
+          - **input / output**:
+              - **input**: None
+              - **output**: void
+
+### File: frontend/src/components/AlbumList.tsx
+
+  - **classname**: N/A (Functional Component)
+  - **function name**: AlbumList
+      - **short description**: Displays a list of albums for the authenticated user. [cite: 184] It fetches album data from the API and provides options to create a new album or navigate to an existing album's edit page. [cite: 184, 185] It also includes a logout button. [cite: 185]
+      - **input / output**:
+          - **input**: None (fetches data internally based on stored token) [cite: 185]
+          - **output**: JSX.Element (React component rendering the album list UI) [cite: 185]
+  - **function name**: fetchAlbums (useEffect hook)
+      - **short description**: Fetches the list of albums from the `/api/albums` endpoint when the component mounts or `Maps` function changes. [cite: 186, 840] It requires an authentication token. If no token is found, it navigates to the login page. [cite: 186, 187]
+      - **input / output**:
+          - **input**: None
+          - **output**: void (updates `albums` or `error` state)
+  - **function name**: handleLogout
+      - **short description**: Removes the authentication token from local storage and navigates the user to the login page. [cite: 188, 841]
+      - **input / output**:
+          - **input**: None
+          - **output**: void (navigates to another route)
+  - **function name**: handleCreateAlbum
+      - **short description**: Sends a POST request to the `/api/albums` endpoint to create a new album with a default title. [cite: 189] On success, it navigates to the edit page of the newly created album. [cite: 189, 190, 842, 843, 844, 845, 846, 847]
+      - **input / output**:
+          - **input**: None
+          - **output**: void (navigates to another route or updates `error` state)
 
 ### File: frontend/src/components/Login.tsx
 
   - **classname**: Login (React Functional Component)
   - **function name**: Login (React Functional Component)
-      - **short description**: ログインフォームとAPI連携、ユーザー登録画面への遷移機能を提供するコンポーネント [cite: 846]
+      - **short description**: ログインフォームとAPI連携、ユーザー登録画面への遷移機能を提供するコンポーネント [cite: 175, 758]
       - **input / output**:
-          - **input**: なし (内部でユーザー名とパスワードの状態を管理) [cite: 846]
-          - **output**: ログインフォームのUI要素。ログインボタンクリック時に `/auth/login` APIを呼び出す。登録ボタンクリック時に `/register` へ遷移する。 [cite: 846]
+          - **input**: なし (内部でユーザー名とパスワードの状態を管理) [cite: 175]
+          - **output**: ログインフォームのUI要素。ログインボタンクリック時に `/auth/login` APIを呼び出す。登録ボタンクリック時に `/register` へ遷移する。 [cite: 175]
   - **function name**: handleSubmit
-      - **short description**: Handles the form submission for login. It sends a POST request to the login API endpoint with the username and password. On success, it stores the token and navigates to the albums page. On failure, it displays an error message. [cite: 531, 532, 533, 534, 535, 536, 537, 538, 539]
+      - **short description**: Handles the form submission for login. It sends a POST request to the login API endpoint with the username and password. [cite: 176] On success, it stores the token and navigates to the albums page. On failure, it displays an error message. [cite: 176, 177, 760, 761, 762, 763, 764, 765, 766, 767, 768]
       - **input / output**:
           - **input**: event: React.FormEvent
           - **output**: void (updates state, navigates, or displays errors)
   - **function name**: handleRegisterClick
-      - **short description**: Navigates the user to the registration page (`/register`) when clicked. [cite: 540]
+      - **short description**: Navigates the user to the registration page (`/register`) when clicked. [cite: 178, 769]
       - **input / output**:
           - **input**: None
           - **output**: void (navigates to another route)
@@ -349,88 +593,30 @@ Here is the source code information for each file, formatted as requested:
 
   - **classname**: Register (React Functional Component)
   - **function name**: Register (React Functional Component)
-      - **short description**: ユーザー登録フォームとAPI連携機能を提供するコンポーネント [cite: 846]
+      - **short description**: ユーザー登録フォームとAPI連携機能を提供するコンポーネント [cite: 179, 775]
       - **input / output**:
-          - **input**: なし (内部でユーザー名とパスワードの状態を管理) [cite: 846]
-          - **output**: ユーザー登録フォームのUI要素。登録ボタンクリック時に `/auth/register` APIを呼び出す。 [cite: 846]
+          - **input**: なし (内部でユーザー名とパスワードの状態を管理) [cite: 179]
+          - **output**: ユーザー登録フォームのUI要素。登録ボタンクリック時に `/auth/register` APIを呼び出す。 [cite: 179]
   - **function name**: handleSubmit
-      - **short description**: Handles the form submission for user registration. It sends a POST request to the registration API endpoint with the username and password. On success, it alerts the user and navigates to the login page. On failure, it displays an error message. [cite: 548, 549, 550, 551, 552, 553, 554, 555]
+      - **short description**: Handles the form submission for user registration. [cite: 180] It sends a POST request to the registration API endpoint with the username and password. [cite: 180, 181] On success, it alerts the user and navigates to the login page. On failure, it displays an error message. [cite: 181, 182, 777, 778, 779, 780, 781, 782, 783, 784]
       - **input / output**:
           - **input**: event: React.FormEvent
           - **output**: void (updates state, navigates, or displays errors)
   - **function name**: handleLoginClick
-      - **short description**: Navigates the user to the login page (`/login`) when clicked. [cite: 556]
+      - **short description**: Navigates the user to the login page (`/login`) when clicked. [cite: 183, 785]
       - **input / output**:
           - **input**: None
           - **output**: void (navigates to another route)
-
-### File: frontend/src/components/AlbumList.tsx
-
-  - **classname**: N/A (Functional Component)
-  - **function name**: AlbumList
-      - **short description**: Displays a list of albums for the authenticated user. It fetches album data from the API and provides options to create a new album or navigate to an existing album's edit page. It also includes a logout button. [cite: 850, 851]
-      - **input / output**:
-          - **input**: None (fetches data internally based on stored token) [cite: 851]
-          - **output**: JSX.Element (React component rendering the album list UI) [cite: 851]
-  - **function name**: fetchAlbums (useEffect hook)
-      - **short description**: Fetches the list of albums from the `/api/albums` endpoint when the component mounts or `Maps` function changes. It requires an authentication token. If no token is found, it navigates to the login page. [cite: 687, 688]
-      - **input / output**:
-          - **input**: None
-          - **output**: void (updates `albums` or `error` state)
-  - **function name**: handleLogout
-      - **short description**: Removes the authentication token from local storage and navigates the user to the login page. [cite: 689]
-      - **input / output**:
-          - **input**: None
-          - **output**: void (navigates to another route)
-  - **function name**: handleCreateAlbum
-      - **short description**: Sends a POST request to the `/api/albums` endpoint to create a new album with a default title. On success, it navigates to the edit page of the newly created album. [cite: 690, 691, 692, 693, 694, 695]
-      - **input / output**:
-          - **input**: None
-          - **output**: void (navigates to another route or updates `error` state)
-
-### File: frontend/src/components/AlbumEdit.tsx
-
-  - **classname**: AlbumEdit (React Functional Component)
-  - **function name**: AlbumEdit (React Functional Component)
-      - **short description**: アルバム編集画面の基本レイアウト、ツールバー、サイドバーを提供するコンポーネント。写真のドラッグ＆ドロップによる配置、ページ追加機能を持つ。 [cite: 852]
-      - **input / output**:
-          - **input**: URLパラメータ (albumId) [cite: 852]
-          - **output**: アルバム編集画面のUI要素。 [cite: 852]
-  - **function name**: useEffect hook (for albumId)
-      - **short description**: Executes when `params.albumId` changes. It sets the `albumId` state and logs it. Placeholder for fetching album details and photos based on the `albumId`. Currently loads mock photo data. [cite: 724, 725]
-      - **input / output**:
-          - **input**: `params.albumId` (from react-router-dom)
-          - **output**: void (updates state, logs messages)
-  - **function name**: handleAddPage
-      - **short description**: Sends a POST request to the `/api/albums/:albumId/pages` endpoint to add a new page to the current album. Requires an authentication token. [cite: 726, 727, 728, 729, 730, 731, 732, 733, 734]
-      - **input / output**:
-          - **input**: None
-          - **output**: void (logs messages, shows alerts, potentially updates state in a full implementation)
-  - **function name**: handleDragStart
-      - **short description**: ドラッグ操作開始時に、ドラッグされた写真情報を保持する。 [cite: 855]
-      - **input / output**:
-          - **input**: React.DragEvent\<HTMLDivElement\>, photo: Photo [cite: 855]
-          - **output**: なし (内部状態でdraggedPhotoを更新) [cite: 855]
-  - **function name**: handleDragOver
-      - **short description**: ドロップ操作を許可するために、dragoverイベントのデフォルト動作をキャンセルする。 [cite: 856]
-      - **input / output**:
-          - **input**: React.DragEvent\<HTMLDivElement\> [cite: 856]
-          - **output**: なし [cite: 856]
-  - **function name**: handleDrop
-      - **short description**: 写真がドロップされた際に、ドロップ位置と写真情報からオブジェクト作成APIを呼び出し、キャンバスに写真オブジェクトを追加する。 [cite: 857]
-      - **input / output**:
-          - **input**: React.DragEvent\<HTMLDivElement\> [cite: 857]
-          - **output**: なし (成功時: albumObjects状態を更新、失敗時: エラーアラート表示) [cite: 857]
 
 ### File: frontend/src/App.css
 
-  - **short description**: This CSS file contains styles for the main App component. It includes basic text alignment, styles for the App logo (including a spin animation), and the App header. [cite: 307, 308, 309, 310]
+  - **short description**: This CSS file contains styles for the main App component. [cite: 197] It includes basic text alignment, styles for the App logo (including a spin animation), and the App header. [cite: 197, 198, 252, 253, 254, 255]
 
 ### File: frontend/src/App.test.tsx
 
-  - **short description**: This file contains a simple test for the App component using React Testing Library. It checks if the "learn react" link is rendered. [cite: 311, 312]
+  - **short description**: This file contains a simple test for the App component using React Testing Library. [cite: 199, 256] It checks if the "learn react" link is rendered. [cite: 199]
   - **function name**: test('renders learn react link', ...)
-      - **short description**: A Jest test case that renders the `App` component and asserts that an element containing the text "learn react" (case-insensitive) is present in the document. [cite: 312]
+      - **short description**: A Jest test case that renders the `App` component and asserts that an element containing the text "learn react" (case-insensitive) is present in the document. [cite: 200, 257]
       - **input / output**:
           - **input**: None
           - **output**: Test result (pass/fail)
@@ -439,94 +625,85 @@ Here is the source code information for each file, formatted as requested:
 
   - **classname**: App (React Functional Component)
   - **function name**: App (React Functional Component)
-      - **short description**: アプリケーションのメインコンポーネント。ルーティングを設定し、ログイン画面、ユーザー登録画面、アルバム一覧画面、アルバム編集画面を表示する。 [cite: 847]
+      - **short description**: アプリケーションのメインコンポーネント。ルーティングを設定し、ログイン画面、ユーザー登録画面、アルバム一覧画面、アルバム編集画面を表示する。 [cite: 201, 854, 855]
       - **input / output**:
-          - **input**: なし [cite: 847]
-          - **output**: URLパスに応じた画面コンポーネント (Login, Register, AlbumList, or AlbumEdit) [cite: 702, 703, 704, 847]
+          - **input**: なし [cite: 201]
+          - **output**: URLパスに応じた画面コンポーネント (Login, Register, AlbumList, or AlbumEdit) [cite: 201]
 
 ### File: frontend/src/index.css
 
-  - **short description**: This CSS file provides global styles for the application. It resets the default margin on the body, sets a default font family, and enables anti-aliasing for fonts. It also defines a monospace font family for `code` elements. [cite: 313, 314, 315]
+  - **short description**: This CSS file provides global styles for the application. [cite: 202] It resets the default margin on the body, sets a default font family, and enables anti-aliasing for fonts. [cite: 202, 203, 259] It also defines a monospace font family for `code` elements. [cite: 204, 260]
 
 ### File: frontend/src/index.tsx
 
-  - **short description**: This is the main entry point for the React application. It imports necessary modules, renders the root `App` component into the DOM element with the ID 'root', and sets up `reportWebVitals`. [cite: 316, 317, 318]
+  - **short description**: This is the main entry point for the React application. [cite: 205] It imports necessary modules, renders the root `App` component into the DOM element with the ID 'root', and sets up `reportWebVitals`. [cite: 205, 206, 261, 262, 263]
   - **function name**: reportWebVitals
-      - **short description**: A function imported from `./reportWebVitals` which is called to measure performance metrics. [cite: 318]
+      - **short description**: A function imported from `./reportWebVitals` which is called to measure performance metrics. [cite: 207]
       - **input / output**:
           - **input**: (optional) onPerfEntry: ReportHandler
           - **output**: void
 
 ### File: frontend/src/logo.svg
 
-  - **short description**: This is an SVG file defining the React logo. It consists of several path and circle elements that form the characteristic atom-like symbol. [cite: 319, 320]
+  - **short description**: This is an SVG file defining the React logo. [cite: 208] It consists of several path and circle elements that form the characteristic atom-like symbol. [cite: 208, 209, 264, 265]
 
 ### File: frontend/src/react-app-env.d.ts
 
-  - **short description**: This file is a TypeScript declaration file. It references the type definitions for `react-scripts`, which provides support for Create React App's environment variables and features within a TypeScript project.
+  - **short description**: This file is a TypeScript declaration file. [cite: 210] It references the type definitions for `react-scripts`, which provides support for Create React App's environment variables and features within a TypeScript project. [cite: 211]
 
 ### File: frontend/src/reportWebVitals.ts
 
-  - **short description**: This file defines a function `reportWebVitals` that, if provided with a callback function (`onPerfEntry`), dynamically imports the `web-vitals` library and calls its functions (getCLS, getFID, getFCP, getLCP, getTTFB) to measure various performance metrics of the web application. [cite: 321, 322]
+  - **short description**: This file defines a function `reportWebVitals` that, if provided with a callback function (`onPerfEntry`), dynamically imports the `web-vitals` library and calls its functions (getCLS, getFID, getFCP, getLCP, getTTFB) to measure various performance metrics of the web application. [cite: 212, 213, 266, 267]
   - **function name**: reportWebVitals
-      - **short description**: If a `onPerfEntry` callback is provided and is a function, this function imports web-vitals and calls its metric gathering functions with the callback. [cite: 321, 322]
+      - **short description**: If a `onPerfEntry` callback is provided and is a function, this function imports web-vitals and calls its metric gathering functions with the callback. [cite: 213]
       - **input / output**:
           - **input**: onPerfEntry?: ReportHandler
           - **output**: void
 
 ### File: frontend/src/setupProxy.js
 
-  - **short description**: This JavaScript file configures a proxy for the frontend development server. It uses `http-proxy-middleware` to forward requests made to `/api` on the frontend to the backend server (specified by `REACT_APP_BACKEND_URL` or defaulting to `http://localhost:3000`). It also rewrites the path by removing `/api` before forwarding. [cite: 323, 324]
+  - **short description**: This JavaScript file configures a proxy for the frontend development server. [cite: 214] It uses `http-proxy-middleware` to forward requests made to `/api` on the frontend to the backend server (specified by `REACT_APP_BACKEND_URL` or defaulting to `http://localhost:3000`). [cite: 214, 215] It also rewrites the path by removing `/api` before forwarding. [cite: 216, 268, 269]
   - **function name**: (module.exports function)
-      - **short description**: This function takes the Express `app` object as an argument and sets up a proxy middleware for paths starting with `/api`. [cite: 323]
+      - **short description**: This function takes the Express `app` object as an argument and sets up a proxy middleware for paths starting with `/api`. [cite: 217]
       - **input / output**:
           - **input**: app (Express app object)
           - **output**: void (modifies the app object by adding middleware)
 
 ### File: frontend/src/setupTests.ts
 
-  - **short description**: This file is used to set up the testing environment for Jest. It imports `@testing-library/jest-dom` to add custom Jest matchers for asserting on DOM nodes, allowing for more expressive tests (e.g., `expect(element).toHaveTextContent(/react/i)`). [cite: 325]
+  - **short description**: This file is used to set up the testing environment for Jest. [cite: 218] It imports `@testing-library/jest-dom` to add custom Jest matchers for asserting on DOM nodes, allowing for more expressive tests (e.g., `expect(element).toHaveTextContent(/react/i)`). [cite: 219, 270, 271]
 
 ### File: frontend/.gitignore
 
-  - **short description**: This file specifies intentionally untracked files that Git should ignore. It includes common Node.js dependencies (`/node_modules`, `.pnp`, `.pnp.js`), testing output (`/coverage`), production builds (`/build`), miscellaneous system files (`.DS_Store`), environment configuration files (`.env.*`), and log files. [cite: 326]
+  - **short description**: This file specifies intentionally untracked files that Git should ignore. [cite: 220] It includes common Node.js dependencies (`/node_modules`, `.pnp`, `.pnp.js`), testing output (`/coverage`), production builds (`/build`), miscellaneous system files (`.DS_Store`), environment configuration files (`.env.*`), and log files. [cite: 220, 221]
+
+### File: frontend/package.json
+
+  - **short description**: This is the `package.json` file for the frontend React project. It lists dependencies like React, Axios, and testing libraries, and scripts for starting, building, and testing the application. [cite: 858, 859]
 
 ### File: frontend/README.md
 
-  - **short description**: This README file provides information about the frontend project, which was bootstrapped with Create React App. It lists available scripts like `npm start`, `npm test`, `npm run build`, and `npm run eject`, and provides links to learn more about Create React App and React. [cite: 327, 328, 329, 330, 331, 332, 333, 340, 341]
+  - **short description**: This README file provides information about the frontend project, which was bootstrapped with Create React App. [cite: 222] It lists available scripts like `npm start`, `npm test`, `npm run build`, and `npm run eject`, and provides links to learn more about Create React App and React. [cite: 222, 223, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286]
 
 ### File: frontend/tsconfig.json
 
-  - **short description**: This is the TypeScript configuration file for the frontend React project. It specifies various compiler options such as target ECMAScript version, libraries to include, JSX processing, module system, module resolution strategy, and strictness options. [cite: 342]
+  - **short description**: This is the TypeScript configuration file for the frontend React project. [cite: 224] It specifies various compiler options such as target ECMAScript version, libraries to include, JSX processing, module system, module resolution strategy, and strictness options. [cite: 224, 225, 287]
 
 ### File: .gitignore
 
-  - **short description**: This file specifies intentionally untracked files that Git should ignore for the entire project. It includes Node.js dependency folders for both backend and frontend, and the backend's `.env` file.
+  - **short description**: This file specifies intentionally untracked files that Git should ignore for the entire project. [cite: 226] It includes Node.js dependency folders for both backend and frontend, and the backend's `.env` file. [cite: 226, 227]
 
 ### File: ai\_chat\_log.md
 
-  - **short description**: This file appears to be a log of interactions or prompts related to UI generation from images and the creation of design documents (class diagrams, sequence diagrams, API specifications, database schemas) for a project. It also mentions working on GitHub issues. [cite: 708, 709, 710, 711, 712]
+  - **short description**: This file appears to be a log of interactions or prompts related to UI generation from images and the creation of design documents (class diagrams, sequence diagrams, API specifications, database schemas) for a project. [cite: 228, 900, 901, 902, 903, 904] It also mentions working on GitHub issues. [cite: 228]
 
-### File: backend/package.json
+### File: README.md
 
-  - **short description**: This is the `package.json` file for the backend Node.js project. It defines project metadata, scripts (for testing, development, TypeORM migrations), keywords, author, license, description, engine requirements (Node.js v22+), devDependencies (like TypeScript, Nodemon, testing types), and dependencies (like Express, TypeORM, Azure Storage Blob, bcrypt, JWT). [cite: 713, 714]
+  - **short description**: This is the main README file for the "Album Maker" project. [cite: 790]
 
 ### File: schedule.txt
 
-  - **short description**: This file contains a schedule or log of time spent on various development tasks for the "アルバムメーカー" (Album Maker) project, dated from April 26th to May 8th. Tasks include requirement definition, screen design, system architecture, database design, Azure environment setup, and working on specific issues.
-
-### File: .repomix/bundles.json
-
-  - **short description**: This file contains an empty JSON object under the "bundles" key. It is likely a configuration or output file for the Repomix tool.
-
-### File: backend/src/middleware/authMiddleware.ts
-
-  - **short description**: This file defines an authentication middleware using JSON Web Tokens (JWT) for an Express application.
-  - **function name**: authenticateToken
-      - **short description**: Express middleware function to authenticate requests using a JWT token from the Authorization header. It verifies the token and, if valid, attaches the decoded user payload to the `req.user` object. [cite: 562, 563, 564, 565, 566, 567, 568, 569]
-      - **input / output**:
-          - **input**: req: Request, res: Response, next: NextFunction
-          - **output**: void (sends response on error or calls `next()` on success)
+  - **short description**: This file contains a schedule or log of time spent on various development tasks for the "アルバムメーカー" (Album Maker) project, dated from April 26th to May 8th. [cite: 231] Tasks include requirement definition, screen design, system architecture, database design, Azure environment setup, and working on specific issues. [cite: 231, 232]
 
 ================================================================
 End of Codebase
