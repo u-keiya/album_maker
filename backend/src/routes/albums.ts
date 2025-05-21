@@ -238,6 +238,17 @@ router.post('/:albumId/objects', authenticateToken, async (req: Request, res: Re
         return res.status(400).json({ error: 'InvalidInput', message: 'Missing required object data.' });
     }
 
+    // Validate photoId if type is 'photo'
+    if (type === 'photo') {
+        if (!contentData.photoId) {
+            return res.status(400).json({ error: 'InvalidInput', message: 'Missing photoId in contentData for photo type.' });
+        }
+        const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidV4Regex.test(contentData.photoId)) {
+            return res.status(400).json({ error: 'InvalidInput', message: `Invalid photoId format: ${contentData.photoId}. Must be a valid UUID.` });
+        }
+    }
+
     const albumRepository = AppDataSource.getRepository(Album);
     const pageRepository = AppDataSource.getRepository(AlbumPage);
     const objectRepository = AppDataSource.getRepository(AlbumObject);
@@ -304,6 +315,18 @@ router.put('/:albumId/objects/:objectId', authenticateToken, async (req: Request
     const { positionX, positionY, width, height, rotation, zIndex, contentData } = req.body;
     const userId = req.user?.userId;
 
+    // General UUID format regex (allows for different versions)
+    const generalUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!generalUuidRegex.test(albumId)) {
+        console.error(`[ObjectUpdate] Invalid albumId format in path: ${albumId}`);
+        return res.status(400).json({ error: 'InvalidInput', message: 'Invalid album ID format.' });
+    }
+    if (!generalUuidRegex.test(objectId)) {
+        console.error(`[ObjectUpdate] Invalid objectId format in path: ${objectId}`);
+        return res.status(400).json({ error: 'InvalidInput', message: 'Invalid object ID format.' });
+    }
+
     if (!userId) {
         return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
     }
@@ -313,6 +336,19 @@ router.put('/:albumId/objects/:objectId', authenticateToken, async (req: Request
         if (typeof contentData !== 'object' || contentData === null) {
             return res.status(400).json({ error: 'InvalidInput', message: 'contentData must be an object.' });
         }
+
+        // Fetch the existing object to check its type for photoId validation
+        const tempObjectRepository = AppDataSource.getRepository(AlbumObject);
+        const existingObjectType = await tempObjectRepository.findOne({ where: { object_id: objectId }, select: ['type'] });
+
+        if (existingObjectType?.type === 'photo' && contentData.photoId) {
+            const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            if (!uuidV4Regex.test(contentData.photoId)) {
+                return res.status(400).json({ error: 'InvalidInput', message: `Invalid photoId format in contentData: ${contentData.photoId}. Must be a valid UUID.` });
+            }
+        }
+
+
         // Additional validation for cropInfo if type is 'photo'
         // This assumes the 'type' of the object is not changing or is known.
         // For a more robust solution, you might need to fetch the object's type first
@@ -429,6 +465,18 @@ router.delete('/:albumId/objects/:objectId', authenticateToken, async (req: Requ
     const { albumId, objectId } = req.params;
     const userId = req.user?.userId;
 
+    // General UUID format regex (allows for different versions)
+    const generalUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!generalUuidRegex.test(albumId)) {
+        console.error(`[ObjectDelete] Invalid albumId format in path: ${albumId}`);
+        return res.status(400).json({ error: 'InvalidInput', message: 'Invalid album ID format.' });
+    }
+    if (!generalUuidRegex.test(objectId)) {
+        console.error(`[ObjectDelete] Invalid objectId format in path: ${objectId}`);
+        return res.status(400).json({ error: 'InvalidInput', message: 'Invalid object ID format.' });
+    }
+
     if (!userId) {
         return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
     }
@@ -472,6 +520,14 @@ router.delete('/:albumId/objects/:objectId', authenticateToken, async (req: Requ
 router.get('/:albumId', authenticateToken, async (req: Request, res: Response) => {
     const { albumId } = req.params;
     const userId = req.user?.userId;
+
+    // General UUID format regex (allows for different versions)
+    const generalUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!generalUuidRegex.test(albumId)) {
+        console.error(`[AlbumGet] Invalid albumId format in path: ${albumId}`);
+        return res.status(400).json({ error: 'InvalidInput', message: 'Invalid album ID format.' });
+    }
 
     if (!userId) {
         return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
@@ -522,53 +578,79 @@ router.get('/:albumId', authenticateToken, async (req: Request, res: Response) =
                 pageId: page.page_id,
                 pageNumber: page.page_number,
                 objects: await Promise.all(page.objects.map(async (object) => {
-                    let parsedContentData = typeof object.content_data === 'string'
-                        ? JSON.parse(object.content_data)
-                        : object.content_data;
+                    let parsedContentData;
+                    try {
+                        parsedContentData = typeof object.content_data === 'string'
+                            ? JSON.parse(object.content_data)
+                            : object.content_data;
+                    } catch (e) {
+                        console.error(`Error parsing content_data for object ${object.object_id} on page ${page.page_id}:`, object.content_data, e);
+                        // Return a default or error state for this object if parsing fails
+                        return {
+                            objectId: object.object_id,
+                            type: object.type,
+                            positionX: object.position_x,
+                            positionY: object.position_y,
+                            width: object.width,
+                            height: object.height,
+                            rotation: object.rotation,
+                            zIndex: object.z_index,
+                            contentData: { error: "Failed to parse content_data" },
+                            createdAt: object.created_at,
+                            updatedAt: object.updated_at,
+                        };
+                    }
 
                     if (containerClient && parsedContentData) {
                         if (object.type === 'photo' && parsedContentData.photoId) {
                             try {
-                                const photoEntity = await photoRepository.findOneBy({ photo_id: parsedContentData.photoId });
-                                if (photoEntity && photoEntity.file_path) {
-                                    const blobName = photoEntity.file_path.substring(photoEntity.file_path.lastIndexOf('/') + 1);
-                                    const sasUrl = getBlobUrlWithSas(containerClient, blobName);
-                                    if (sasUrl) {
-                                        parsedContentData.url = sasUrl; // Add/overwrite url with SAS
+                                const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                                if (!parsedContentData.photoId || !uuidV4Regex.test(parsedContentData.photoId)) {
+                                    console.warn(`[AlbumGet] Invalid photoId format: ${parsedContentData.photoId} for object ${object.object_id}. Skipping SAS URL generation.`);
+                                } else {
+                                    const photoEntity = await photoRepository.findOneBy({ photo_id: parsedContentData.photoId });
+                                    if (photoEntity && photoEntity.file_path) {
+                                        const blobName = photoEntity.file_path.substring(photoEntity.file_path.lastIndexOf('/') + 1);
+                                        const sasUrl = getBlobUrlWithSas(containerClient, blobName);
+                                        if (sasUrl) {
+                                            parsedContentData.url = sasUrl;
+                                        } else {
+                                            console.warn(`[AlbumGet] Failed to get SAS URL for photo ${parsedContentData.photoId}, blob ${blobName}. Object ID: ${object.object_id}`);
+                                        }
+                                    } else if (photoEntity) {
+                                        console.warn(`[AlbumGet] Photo entity found for photoId ${parsedContentData.photoId} but file_path is missing. Object ID: ${object.object_id}`);
                                     } else {
-                                        console.warn(`Failed to get SAS URL for photo ${parsedContentData.photoId}, blob ${blobName}`);
-                                        // Keep original URL from contentData if SAS fails, or handle error
-                                        // parsedContentData.url might already be a direct URL if SAS failed during upload
+                                        console.warn(`[AlbumGet] Photo entity not found for photoId ${parsedContentData.photoId}. Object ID: ${object.object_id}`);
                                     }
                                 }
                             } catch (e) {
-                                console.error(`Error fetching photo entity or generating SAS for photoId ${parsedContentData.photoId}:`, e);
+                                console.error(`[AlbumGet] Error processing photo object ${object.object_id} with photoId ${parsedContentData.photoId}:`, e);
                             }
                         } else if (object.type === 'sticker' && parsedContentData.stickerId && parsedContentData.imageUrl) {
-                            // Assuming sticker imageUrl might also be a direct blob URL that needs SAS
-                            // This part depends on how sticker images are stored and referenced.
-                            // If sticker imageUrl is already a public URL or managed differently, this might not be needed.
-                            // For consistency, if it's a blob URL, let's try to get SAS.
-                            // We need a way to get blobName from stickerId or imageUrl.
-                            // For this example, let's assume imageUrl is a full blob URL and we extract blobName.
-                            try {
-                                const urlParts = new URL(parsedContentData.imageUrl);
-                                const pathParts = urlParts.pathname.split('/');
-                                const blobNameFromStickerUrl = pathParts.pop(); // Get last part of path
-                                const containerNameFromStickerUrl = pathParts.pop(); // Get container name
+                            if (typeof parsedContentData.imageUrl !== 'string') {
+                                 console.warn(`[AlbumGet] Sticker ${parsedContentData.stickerId} imageUrl is not a string: ${parsedContentData.imageUrl}. Object ID: ${object.object_id}`);
+                            } else {
+                                try {
+                                    const urlParts = new URL(parsedContentData.imageUrl);
+                                    const pathParts = urlParts.pathname.split('/');
+                                    const blobNameFromStickerUrl = pathParts.pop();
+                                    const containerNameFromStickerUrl = pathParts.pop();
 
-                                if (blobNameFromStickerUrl && containerNameFromStickerUrl && containerClient.containerName === containerNameFromStickerUrl) {
-                                     const sasUrl = getBlobUrlWithSas(containerClient, blobNameFromStickerUrl);
-                                     if (sasUrl) {
-                                         parsedContentData.imageUrl = sasUrl;
-                                     } else {
-                                         console.warn(`Failed to get SAS URL for sticker ${parsedContentData.stickerId}, blob ${blobNameFromStickerUrl}`);
-                                     }
-                                } else if (blobNameFromStickerUrl && containerClient.containerName !== containerNameFromStickerUrl) {
-                                    console.warn(`Sticker ${parsedContentData.stickerId} blob ${blobNameFromStickerUrl} is in a different container (${containerNameFromStickerUrl}) than configured (${containerClient.containerName}). SAS not applied.`);
+                                    if (blobNameFromStickerUrl && containerNameFromStickerUrl && containerClient.containerName === containerNameFromStickerUrl) {
+                                        const sasUrl = getBlobUrlWithSas(containerClient, blobNameFromStickerUrl);
+                                        if (sasUrl) {
+                                            parsedContentData.imageUrl = sasUrl;
+                                        } else {
+                                            console.warn(`[AlbumGet] Failed to get SAS URL for sticker ${parsedContentData.stickerId}, blob ${blobNameFromStickerUrl}. Object ID: ${object.object_id}`);
+                                        }
+                                    } else if (blobNameFromStickerUrl && containerClient.containerName !== containerNameFromStickerUrl) {
+                                        console.warn(`[AlbumGet] Sticker ${parsedContentData.stickerId} blob ${blobNameFromStickerUrl} is in a different container (${containerNameFromStickerUrl}) than configured (${containerClient.containerName}). SAS not applied. Object ID: ${object.object_id}`);
+                                    } else {
+                                         console.warn(`[AlbumGet] Could not determine blobName or containerName for sticker ${parsedContentData.stickerId} from imageUrl: ${parsedContentData.imageUrl}. Object ID: ${object.object_id}`);
+                                    }
+                                } catch (e) {
+                                    console.warn(`[AlbumGet] Error processing sticker object ${object.object_id} with stickerId ${parsedContentData.stickerId} and imageUrl ${parsedContentData.imageUrl}:`, e);
                                 }
-                            } catch(e) {
-                                console.warn(`Could not parse sticker imageUrl or generate SAS for sticker ${parsedContentData.stickerId}: ${parsedContentData.imageUrl}`, e);
                             }
                         }
                     }
@@ -592,9 +674,10 @@ router.get('/:albumId', authenticateToken, async (req: Request, res: Response) =
 
         return res.status(200).json(responseData);
 
-    } catch (error) {
-        console.error('Error fetching album details:', error);
-        return res.status(500).json({ error: 'ServerError', message: 'Failed to fetch album details.' });
+    } catch (error: any) {
+        console.error('Error fetching album details:', error.message, error.stack);
+        if (error.detail) console.error('Error detail:', error.detail);
+        return res.status(500).json({ error: 'ServerError', message: 'Failed to fetch album details.', details: error.message });
     }
 });
 
