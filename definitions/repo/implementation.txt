@@ -1,0 +1,40 @@
+File: frontend/src/components/AlbumList.tsx
+Function: AlbumList (React.FC)
+Short Description: Changed album ID property from `id` to `albumId` in the `Album` interface and updated its usage within the component to correctly pass the `albumId` to the album edit page route. This resolves an issue where `undefined` was being passed as the album ID.
+Input / Output:
+  Input: None
+  Output: JSX.Element (Album list UI)
+
+File: frontend/src/components/AlbumEdit.tsx
+Function: handlePhotoUploadDrop
+Short Description: 写真アップロード時にAPIレスポンスのキー名 (`filePath`, `originalFilename`) をフロントエンドの `Photo` インターフェースのキー名 (`url`, `name`) に正しくマッピングするように修正しました。これにより、アップロードされた写真のURLと名前が正しくステートに保存され、画像表示エラーの解消が期待されます。
+Input / Output:
+  Input: e: React.DragEvent<HTMLDivElement>
+  Output: Promise<void> (内部で `photos` ステートを更新)
+File: backend/src/routes/albums.ts
+Function: GET /albums/:albumId (router.get('/:albumId', ...))
+Short Description: パスパラメータとして渡される albumId に対するUUID形式のバリデーションを追加しました。また、内部で写真オブジェクトの photoId を扱う際にもUUID形式のバリデーションを追加し、不正なIDによるデータベースエラーを防止します。エラーロギングも強化しました。
+Input / Output:
+  Input: req: Request (params: { albumId: string }), res: Response
+  Output: Response (JSON or error)
+
+File: backend/src/routes/albums.ts
+Function: PUT /albums/:albumId/objects/:objectId (router.put('/:albumId/objects/:objectId', ...))
+Short Description: パスパラメータとして渡される albumId および objectId に対するUUID形式のバリデーションを追加しました。また、リクエストボディの contentData 内に含まれる photoId に対してもUUID形式のバリデーションを追加しました。
+Input / Output:
+  Input: req: Request (params: { albumId: string, objectId: string }, body: { ... }), res: Response
+  Output: Response (JSON or error)
+
+File: backend/src/routes/albums.ts
+Function: DELETE /albums/:albumId/objects/:objectId (router.delete('/:albumId/objects/:objectId', ...))
+Short Description: パスパラメータとして渡される albumId および objectId に対するUUID形式のバリデーションを追加しました。
+Input / Output:
+  Input: req: Request (params: { albumId: string, objectId: string }), res: Response
+  Output: Response (status 204 or error)
+
+File: backend/src/routes/albums.ts
+Function: POST /albums/:albumId/objects (router.post('/:albumId/objects', ...))
+Short Description: リクエストボディの contentData 内に含まれる photoId (typeが'photo'の場合) に対するUUID形式のバリデーションを追加しました。
+Input / Output:
+  Input: req: Request (params: { albumId: string }, body: { pageId: string, type: string, ..., contentData: { photoId?: string } }), res: Response
+  Output: Response (JSON or error)

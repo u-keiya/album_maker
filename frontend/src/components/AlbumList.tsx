@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 interface Album {
-  id: number;
+  albumId: string; // id から albumId に変更し、型をstringに修正
   title: string;
   createdAt: string;
   thumbnailUrl?: string; // Optional: If you have thumbnails
@@ -104,7 +104,7 @@ const AlbumList: React.FC = () => {
 
         {/* Album Items */}
         {albums.map((album) => (
-          <div key={album.id} className="border rounded-lg p-4 hover:shadow-lg cursor-pointer" onClick={() => navigate(`/albums/${album.id}`)}>
+          <div key={album.albumId} className="border rounded-lg p-4 hover:shadow-lg cursor-pointer" onClick={() => navigate(`/albums/${album.albumId}`)}>
             <div className="w-full h-32 bg-gray-200 mb-2 rounded flex items-center justify-center">
               {/* TODO: Replace with actual thumbnail if available */}
               <span className="text-gray-500">{album.thumbnailUrl ? <img src={album.thumbnailUrl} alt={album.title} className="object-cover w-full h-full rounded"/> : 'サムネイルなし'}</span>
