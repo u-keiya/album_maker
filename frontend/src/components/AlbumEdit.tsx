@@ -3,13 +3,13 @@ import { useParams } from 'react-router-dom';
 import './AlbumEdit.css';
 
 interface Photo {
-  id: string;
+  photoId: string; // id から photoId に変更
   url: string;
   name: string;
 }
 
 interface Sticker {
-  id: string;
+  stickerId: string; // id から stickerId に変更
   imageUrl: string; // または画像パス
   name: string;
 }
@@ -153,9 +153,9 @@ const AlbumEdit: React.FC = () => {
           if (!storedUserId) {
             console.warn('localStorageにuserIdが見つかりません。写真リストの取得をスキップします。');
             setPhotos([ // モックデータでフォールバック
-              { id: 'photo1', url: 'https://via.placeholder.com/100x100.png?text=Photo+1', name: 'Photo 1' },
-              { id: 'photo2', url: 'https://via.placeholder.com/100x100.png?text=Photo+2', name: 'Photo 2' },
-              { id: 'photo3', url: 'https://via.placeholder.com/100x100.png?text=Photo+3', name: 'Photo 3' },
+              { photoId: 'photo1', url: 'https://via.placeholder.com/100x100.png?text=Photo+1', name: 'Photo 1' },
+              { photoId: 'photo2', url: 'https://via.placeholder.com/100x100.png?text=Photo+2', name: 'Photo 2' },
+              { photoId: 'photo3', url: 'https://via.placeholder.com/100x100.png?text=Photo+3', name: 'Photo 3' },
             ]);
           } else {
             const photosResponse = await fetch(`/api/photos?userId=${storedUserId}`, {
@@ -165,13 +165,18 @@ const AlbumEdit: React.FC = () => {
             // エラーでも処理を続行するが、コンソールには警告を出す
             console.warn(`アップロード済み写真リストの取得に失敗しました: ${photosResponse.status}. モックデータを使用します。`);
             setPhotos([
-              { id: 'photo1', url: 'https://via.placeholder.com/100x100.png?text=Photo+1', name: 'Photo 1' },
-              { id: 'photo2', url: 'https://via.placeholder.com/100x100.png?text=Photo+2', name: 'Photo 2' },
-              { id: 'photo3', url: 'https://via.placeholder.com/100x100.png?text=Photo+3', name: 'Photo 3' },
+              { photoId: 'photo1', url: 'https://via.placeholder.com/100x100.png?text=Photo+1', name: 'Photo 1' },
+              { photoId: 'photo2', url: 'https://via.placeholder.com/100x100.png?text=Photo+2', name: 'Photo 2' },
+              { photoId: 'photo3', url: 'https://via.placeholder.com/100x100.png?text=Photo+3', name: 'Photo 3' },
             ]);
           } else {
-              const photosData: Photo[] = await photosResponse.json();
-              setPhotos(photosData);
+              const rawPhotosData: any[] = await photosResponse.json();
+              const mappedPhotosData: Photo[] = rawPhotosData.map(photo => ({
+                photoId: photo.photo_id || photo.id, // photo_id を優先、なければ id
+                url: photo.file_path || photo.url, // file_path を優先、なければ url
+                name: photo.original_filename || photo.name,
+              }));
+              setPhotos(mappedPhotosData);
             }
           }
 
@@ -185,7 +190,7 @@ const AlbumEdit: React.FC = () => {
           const rawStickersData: any[] = await stickersResponse.json(); // 一旦anyで受ける
           // バックエンドのプロパティ名をフロントエンドのStickerインターフェースにマッピング
           const mappedStickersData: Sticker[] = rawStickersData.map(sticker => ({
-            id: sticker.sticker_id || sticker.id, // sticker_idをidに
+            stickerId: sticker.sticker_id || sticker.id, // sticker_idをstickerIdに
             imageUrl: sticker.file_path || sticker.imageUrl, // file_pathをimageUrlに (SAS付きであることを期待)
             name: sticker.name,
           }));
@@ -276,7 +281,15 @@ const AlbumEdit: React.FC = () => {
     } else if (itemType === 'sticker') {
       setDraggedItem({ type: 'sticker', data: item as Sticker });
     }
-    e.dataTransfer.setData('application/json', JSON.stringify({ type: itemType, id: item.id }));
+    // item.id を item.photoId または item.stickerId に変更する必要があるが、
+    // DraggableItem の data が Photo | Sticker なので、型ガードしてアクセスする
+    let itemId: string;
+    if (itemType === 'photo') {
+        itemId = (item as Photo).photoId;
+    } else {
+        itemId = (item as Sticker).stickerId;
+    }
+    e.dataTransfer.setData('application/json', JSON.stringify({ type: itemType, id: itemId }));
     console.log(`Drag started: ${itemType}`, item);
   };
 
@@ -324,7 +337,7 @@ const AlbumEdit: React.FC = () => {
       }
 
       newObjectDataPayload = {
-        photoId: photoData.id,
+        photoId: photoData.photoId, // photoData.id から photoData.photoId に変更
         cropInfo: {}, // 初期状態では空のcropInfo
         originalWidth: itemWidth, // 画像本来の幅
         originalHeight: itemHeight, // 画像本来の高さ
@@ -340,7 +353,7 @@ const AlbumEdit: React.FC = () => {
       itemHeight = 50;
 
       newObjectDataPayload = {
-        stickerId: stickerData.id,
+        stickerId: stickerData.stickerId, // stickerData.id から stickerData.stickerId に変更
         name: stickerData.name,
         imageUrl: stickerData.imageUrl // ステッカーの画像URLを保存
       };
@@ -590,8 +603,14 @@ const AlbumEdit: React.FC = () => {
           });
 
           if (response.ok) {
-            const newPhoto: Photo = await response.json();
-            console.log('Photo uploaded successfully:', newPhoto);
+            const newPhotoDataFromApi: any = await response.json(); // 一旦anyで受ける
+            // APIレスポンスをPhotoインターフェースにマッピング
+            const newPhoto: Photo = {
+              photoId: newPhotoDataFromApi.photoId,
+              url: newPhotoDataFromApi.filePath, // filePath を url にマッピング
+              name: newPhotoDataFromApi.originalFilename, // originalFilename を name にマッピング
+            };
+            console.log('Photo uploaded successfully (mapped):', newPhoto);
             setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
             // Optionally, update the album state if photos are directly tied to it
             // or re-fetch album data if the photo list is part of it.
@@ -1354,10 +1373,10 @@ const AlbumEdit: React.FC = () => {
                   let photoAlt = `Photo object ID: ${obj.objectId}`; // デフォルトのalt
 
                   if (content.photoId && photos.length > 0) {
-                    const foundPhoto = photos.find(p => p.id === content.photoId);
+                    const foundPhoto = photos.find(p => p.photoId === content.photoId);
                     if (foundPhoto && foundPhoto.url) { // foundPhoto.urlもチェック
                       photoSrc = foundPhoto.url;
-                      photoAlt = foundPhoto.name || `Photo: ${foundPhoto.id}`;
+                      photoAlt = foundPhoto.name || `Photo: ${foundPhoto.photoId}`;
                     } else {
                       photoAlt = `Photo ID: ${content.photoId} not found in sidebar list or URL missing.`;
                       console.warn(`Photo with ID ${content.photoId} not found in sidebar or URL missing. Available photos:`, photos, "Found photo object:", foundPhoto);
@@ -1411,7 +1430,7 @@ const AlbumEdit: React.FC = () => {
                     stickerSrc = content.imageUrl;
                     stickerAlt = content.name || `Sticker ${obj.objectId}`;
                   } else if (content.stickerId && stickers.length > 0) {
-                    const foundSticker = stickers.find(s => s.id === content.stickerId);
+                    const foundSticker = stickers.find(s => s.stickerId === content.stickerId);
                     if (foundSticker) {
                       stickerSrc = foundSticker.imageUrl;
                       stickerAlt = foundSticker.name;
@@ -1572,7 +1591,7 @@ const AlbumEdit: React.FC = () => {
                 <p>アップロード済み写真:</p>
                 {photos.map(photo => (
                   <div
-                    key={photo.id}
+                    key={photo.photoId} // photo.id を photo.photoId に変更
                     className="sidebar-item sidebar-photo-item"
                     draggable="true"
                     onDragStart={(e) => handleItemDragStart(e, photo, 'photo')}
@@ -1589,7 +1608,7 @@ const AlbumEdit: React.FC = () => {
                 <p>ステッカー:</p>
                 {stickers.map(sticker => (
                   <div
-                    key={sticker.id}
+                    key={sticker.stickerId} // sticker.id を sticker.stickerId に変更
                     className="sidebar-item sidebar-sticker-item"
                     draggable="true"
                     onDragStart={(e) => handleItemDragStart(e, sticker, 'sticker')}
