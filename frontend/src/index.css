@@ -1,13 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #F8F9FA; /* ライトグレーの背景 */
+  color: #212529; /* ダークグレーのテキスト */
+  line-height: 1.6;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+:root {
+  --primary-color: #0D6EFD; /* モダンなブルー (Bootstrap 5 Primary) */
+  --secondary-color: #6C757D; /* モダンなグレー (Bootstrap 5 Secondary) */
+  --success-color: #198754; /* モダンなグリーン (Bootstrap 5 Success) */
+  --danger-color: #DC3545; /* モダンなレッド (Bootstrap 5 Danger) */
+  --warning-color: #FFC107; /* モダンなイエロー (Bootstrap 5 Warning) */
+  --info-color: #0DCAF0; /* モダンなシアン (Bootstrap 5 Info) */
+  --light-gray: #F8F9FA;
+  --dark-gray: #212529;
+  --border-color: #DEE2E6; /* 境界線用の薄いグレー */
+
+  --font-size-base: 1rem; /* 16px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-lg: 1.25rem; /* 20px */
+
+  --spacing-xs: 0.25rem; /* 4px */
+  --spacing-sm: 0.5rem; /* 8px */
+  --spacing-md: 1rem; /* 16px */
+  --spacing-lg: 1.5rem; /* 24px */
+  --spacing-xl: 2rem; /* 32px */
 }

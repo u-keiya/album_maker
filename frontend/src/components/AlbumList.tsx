@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import './AlbumList.css'; // CSSファイルをインポート
 
 interface Album {
   albumId: string; // id から albumId に変更し、型をstringに修正
@@ -70,47 +71,50 @@ const AlbumList: React.FC = () => {
   };
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return <div className="container error-message">Error: {error}</div>; // エラー表示にもスタイルを適用
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <header className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">アルバム一覧</h1>
+    <div className="album-list-container">
+      <header className="album-list-header">
+        <h1 className="album-list-title">アルバム一覧</h1>
         <button
           onClick={handleLogout}
-          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          className="button button-secondary" // 汎用ボタンスタイルを適用
         >
           ログアウト
         </button>
       </header>
 
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold">マイアルバム</h2>
+      <div className="section-title-container"> {/* 必要に応じてセクションタイトル用のコンテナを追加 */}
+        <h2 className="section-title">マイアルバム</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="album-grid">
         {/* Add New Album Card */}
         <button
           type="button"
-          className="border rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg bg-green-500 hover:bg-green-700 text-white font-bold"
+          className="album-card-new" // 新しいスタイルを適用
           onClick={handleCreateAlbum}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          <svg xmlns="http://www.w3.org/2000/svg" className="album-card-new-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
           <span>新規作成</span>
         </button>
 
         {/* Album Items */}
         {albums.map((album) => (
-          <div key={album.albumId} className="border rounded-lg p-4 hover:shadow-lg cursor-pointer" onClick={() => navigate(`/albums/${album.albumId}`)}>
-            <div className="w-full h-32 bg-gray-200 mb-2 rounded flex items-center justify-center">
-              {/* TODO: Replace with actual thumbnail if available */}
-              <span className="text-gray-500">{album.thumbnailUrl ? <img src={album.thumbnailUrl} alt={album.title} className="object-cover w-full h-full rounded"/> : 'サムネイルなし'}</span>
+          <div key={album.albumId} className="album-card" onClick={() => navigate(`/albums/${album.albumId}`)}>
+            <div className="album-thumbnail">
+              {album.thumbnailUrl ? (
+                <img src={album.thumbnailUrl} alt={album.title} />
+              ) : (
+                <span className="album-thumbnail-placeholder">サムネイルなし</span>
+              )}
             </div>
-            <h3 className="font-semibold text-lg mb-1">{album.title}</h3>
-            <p className="text-sm text-gray-500">作成日: {new Date(album.createdAt).toLocaleDateString()}</p>
+            <h3 className="album-card-title">{album.title}</h3>
+            <p className="album-card-date">作成日: {new Date(album.createdAt).toLocaleDateString()}</p>
           </div>
         ))}
       </div>

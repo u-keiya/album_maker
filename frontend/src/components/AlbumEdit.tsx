@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom'; // useNavigate をインポート
 import './AlbumEdit.css';
 
 interface Photo {
@@ -93,6 +93,7 @@ const AlbumEdit: React.FC = () => {
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate(); // useNavigateフックを使用
 
 
   const params = useParams();
@@ -1272,13 +1273,23 @@ const AlbumEdit: React.FC = () => {
 
   return (
     <div className="album-edit-container">
+      {/* Header */}
       <header className="album-edit-header">
-        <button className="back-button">戻る</button>
-        <h1>アルバム編集 (ID: {album?.albumId || 'N/A'})</h1>
-        <div>
-          ページ:
-          <select value={currentPageId || ''} onChange={(e) => setCurrentPageId(e.target.value)}>
-            {album?.pages.map(page => (
+        <button onClick={() => navigate('/albums')} className="button back-button">← 戻る</button>
+        <h1>{album?.title || 'アルバム編集'}</h1>
+        <div className="page-selector">
+          <span>ページ: </span>
+          <select
+            value={currentPageId || ''}
+            onChange={(e) => {
+                setCurrentPageId(e.target.value);
+                setSelectedObject(null);
+                setIsTextEditing(false);
+            }}
+            className="form-control"
+            style={{ width: 'auto', display: 'inline-block', marginLeft: 'var(--spacing-xs)'}}
+          >
+            {album?.pages.sort((a,b) => a.pageNumber - b.pageNumber).map(page => (
               <option key={page.pageId} value={page.pageId}>
                 {page.pageNumber}
               </option>
@@ -1286,121 +1297,94 @@ const AlbumEdit: React.FC = () => {
           </select>
         </div>
       </header>
+
+      {/* Toolbar */}
       <div className="album-edit-toolbar">
-        <button>ダウンロード</button>
-        <button>保存</button>
-        <button onClick={handleAddPage}>ページ追加</button>
-        <button onClick={handleCropButtonClick}>画像切り取り</button>
-        <button onClick={handleAddTextObject}>テキスト追加</button>
-        <select value={currentTextStyle.font} onChange={(e) => handleTextStyleChange('font', e.target.value)} disabled={!isTextEditing || selectedObject?.type !== 'text'}>
-          <option value="Arial">Arial</option>
-          <option value="Verdana">Verdana</option>
-          <option value="Times New Roman">Times New Roman</option>
-          {/* 他のフォントオプション */}
-        </select>
-        <input type="number" value={currentTextStyle.size} onChange={(e) => handleTextStyleChange('size', parseInt(e.target.value))} disabled={!isTextEditing || selectedObject?.type !== 'text'} style={{width: '60px'}} />
-        <input type="color" value={currentTextStyle.color} onChange={(e) => handleTextStyleChange('color', e.target.value)} disabled={!isTextEditing || selectedObject?.type !== 'text'} />
-        <button onClick={() => handleTextStyleChange('bold', !currentTextStyle.bold)} disabled={!isTextEditing || selectedObject?.type !== 'text'} style={{ fontWeight: currentTextStyle.bold ? 'bold' : 'normal' }}>太字</button>
-        <button onClick={() => setDrawingMode(!drawingMode)} style={{ backgroundColor: drawingMode ? 'lightblue' : ''}}>ペン</button>
-        <select value={penThickness} onChange={(e) => setPenThickness(Number(e.target.value))} disabled={!drawingMode}>
-          <option value="1">極細</option>
-          <option value="2">細</option>
-          <option value="5">中</option>
-          <option value="10">太</option>
-        </select>
-        <input type="color" value={penColor} onChange={(e) => setPenColor(e.target.value)} disabled={!drawingMode} />
-        <button onClick={() => setSelectedObject(null)} disabled={!selectedObject}>選択解除</button>
-        <button onClick={handleDeleteObject} disabled={!selectedObject}>選択オブジェクト削除</button>
-        {cropMode === 'shape' && selectedObject && (
-          <>
-            <button onClick={handleConfirmCrop}>長方形で確定</button>
-            <button onClick={() => { setCropMode(null); setCropShape(null); /* Don't deselect here */ }}>切り取りキャンセル</button>
-            {cropShape && (
-              <div style={{ marginLeft: '10px', border: '1px solid #ccc', padding: '5px'}}>
-                <small>Crop X: <input type="number" value={cropShape.x} onChange={e => setCropShape({...cropShape, x: parseInt(e.target.value)})} style={{width: '50px'}} /></small>
-                <small>Y: <input type="number" value={cropShape.y} onChange={e => setCropShape({...cropShape, y: parseInt(e.target.value)})} style={{width: '50px'}} /></small>
-                <small>W: <input type="number" value={cropShape.width} onChange={e => setCropShape({...cropShape, width: parseInt(e.target.value)})} style={{width: '50px'}} /></small>
-                <small>H: <input type="number" value={cropShape.height} onChange={e => setCropShape({...cropShape, height: parseInt(e.target.value)})} style={{width: '50px'}}/></small>
-              </div>
-            )}
-          </>
-        )}
+        <div className="toolbar-group" id="file_operations">
+            {/* TODO: Implement download and save functionality */}
+            <button className="button" onClick={() => alert('ダウンロード機能は未実装です。')}>Download</button>
+            <button className="button" onClick={() => alert('保存機能は未実装です。')}>Save</button>
+            <button onClick={handleAddPage} className="button">ページ追加</button>
+        </div>
+        <div className="toolbar-group" id="image_operations">
+            <button onClick={handleCropButtonClick} className="button" disabled={!selectedObject || selectedObject.type !== 'photo'}>写真切り取り</button>
+        </div>
+        <div className="toolbar-group" id="text_tools">
+            <button onClick={handleAddTextObject} className="button">テキスト追加</button>
+            <select value={currentTextStyle.font} onChange={(e) => handleTextStyleChange('font', e.target.value)} disabled={!isTextEditing || !selectedObject || selectedObject.type !== 'text'} className="form-control toolbar-font-select">
+            <option value="Inter">Inter</option>
+            <option value="Arial">Arial</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Times New Roman">Times New Roman</option>
+            </select>
+            <input type="number" value={currentTextStyle.size} onChange={(e) => handleTextStyleChange('size', parseInt(e.target.value))} disabled={!isTextEditing || !selectedObject || selectedObject.type !== 'text'} className="form-control toolbar-font-size-input" />
+            <input type="color" value={currentTextStyle.color} onChange={(e) => handleTextStyleChange('color', e.target.value)} disabled={!isTextEditing || !selectedObject || selectedObject.type !== 'text'} className="form-control toolbar-color-input"/>
+            <button onClick={() => handleTextStyleChange('bold', !currentTextStyle.bold)} disabled={!isTextEditing || !selectedObject || selectedObject.type !== 'text'} className="button" style={{ fontWeight: currentTextStyle.bold ? 'bold' : 'normal' }}>B</button>
+            {isTextEditing && <button onClick={handleTextEditComplete} className="button button-primary">テキスト保存</button>}
+        </div>
+
+        <div className="toolbar-group" id="drawing_tools">
+            <button onClick={() => setDrawingMode(!drawingMode)} className={`button ${drawingMode ? 'button-primary' : ''}`}>
+            {drawingMode ? 'ペン' : 'ペン'}
+            </button>
+            <select value={penColor} onChange={(e) => setPenColor(e.target.value)} disabled={!drawingMode} className="form-control toolbar-color-select">
+              <option value="#000000">Black</option>
+              <option value="#FF0000">Red</option>
+              <option value="#FFA500">Orange</option>
+              <option value="#008000">Green</option>
+              <option value="#32CD32">Lime Green</option>
+              <option value="#FFFF00">Yellow</option>
+              <option value="#00BFFF">Cyan/Sky Blue</option>
+              <option value="#0000FF">Blue</option>
+              <option value="#800080">Purple</option>
+            </select>
+            <select value={penThickness} onChange={(e) => setPenThickness(Number(e.target.value))} disabled={!drawingMode} className="form-control toolbar-thickness-select">
+            <option value="2">細</option>
+            <option value="5">中</option>
+            <option value="10">太</option>
+            </select>
+        </div>
+        <div className="toolbar-group" id="selection_tool">
+            <button onClick={() => setSelectedObject(null)} className="button" disabled={!selectedObject}>選択</button>
+            {/* <button className="button">Select Object (TBD)</button> */}
+        </div>
       </div>
+
+      {/* Main Content Area */}
       <main className="album-edit-main">
+        {/* Canvas Area */}
         <div
-          className={`album-edit-canvas ${drawingMode ? 'drawing-active' : ''}`}
-          onDragOver={handleDragOver}
-          // onDrop is now on album-page-representation
-          onMouseDown={handleCanvasMouseDown} // For deselecting objects or starting drawing on canvas itself
-          onMouseMove={handleCanvasMouseMove} // General mouse move for dragging/resizing/rotating objects
-          onMouseUp={handleCanvasMouseUp}     // General mouse up to finalize actions
-          onMouseLeave={handleMouseLeaveCanvas} // Handle mouse leaving canvas area
-          style={{ cursor: drawingMode ? 'crosshair' : (isDraggingObject ? 'grabbing' : 'default') }}
           ref={canvasRef}
+          className={`album-edit-canvas ${drawingMode && isDrawing ? 'drawing-active' : ''} ${isDraggingObject || isResizingObject || isRotatingObject ? 'grabbing' : ''}`}
+          onDragOver={handleDragOver}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseLeave={handleMouseLeaveCanvas}
         >
-          <div
-            className="album-page-representation"
-            ref={pageRef} // pageRef を設定
-            onDrop={handleDrop} // Drop items onto the page representation
-            // MouseDown/Move/Up for objects are handled by the objects themselves or the main canvas listeners
-            // No specific mouse events needed here unless for page-specific interactions not object-related
-          >
-            {/* 配置されたオブジェクトを描画 */}
+          <div ref={pageRef} className="album-page-representation" onDrop={handleDrop} onDragOver={handleDragOver} >
             {albumObjects.map(obj => {
-            const commonStyle: React.CSSProperties = {
-              position: 'absolute',
-              left: `${obj.positionX}px`,
-              top: `${obj.positionY}px`,
-              width: `${obj.width}px`,
-              height: `${obj.height}px`,
-              transform: `rotate(${obj.rotation}deg)`,
-              zIndex: obj.zIndex,
-              border: selectedObject?.objectId === obj.objectId ? '2px solid blue' : '1px solid #ccc', // Updated border for selection
-              boxSizing: 'border-box', // Important for consistent sizing with border
-            };
-            const isSelected = selectedObject?.objectId === obj.objectId;
+              const style: React.CSSProperties = {
+                left: `${obj.positionX}px`,
+                top: `${obj.positionY}px`,
+                width: `${obj.width}px`,
+                height: `${obj.height}px`,
+                transform: `rotate(${obj.rotation}deg)`,
+                zIndex: obj.zIndex,
+              };
 
             const renderContent = () => {
-              // Ensure obj.contentData is an object before accessing its properties
-              const content = (typeof obj.contentData === 'object' && obj.contentData !== null)
-                                ? obj.contentData
-                                : (typeof obj.contentData === 'string' ? JSON.parse(obj.contentData || '{}') : {}); // Attempt to parse if string
-              console.log(`%c[Render] ID: ${obj.objectId}, Type: ${obj.type}`, 'color: purple; font-weight: bold;', 'Parsed ContentData for Render:', content, 'Raw obj.contentData:', obj.contentData, 'Full Object:', obj);
-
+                const content = typeof obj.contentData === 'string'
+                                ? JSON.parse(obj.contentData || '{}')
+                                : (obj.contentData || {});
               switch (obj.type) {
                 case 'photo':
-                  let photoSrc = ''; // 初期値を空にする
-                  let photoAlt = `Photo object ID: ${obj.objectId}`; // デフォルトのalt
-
-                  if (content.photoId && photos.length > 0) {
-                    const foundPhoto = photos.find(p => p.photoId === content.photoId);
-                    if (foundPhoto && foundPhoto.url) { // foundPhoto.urlもチェック
-                      photoSrc = foundPhoto.url;
-                      photoAlt = foundPhoto.name || `Photo: ${foundPhoto.photoId}`;
-                    } else {
-                      photoAlt = `Photo ID: ${content.photoId} not found in sidebar list or URL missing.`;
-                      console.warn(`Photo with ID ${content.photoId} not found in sidebar or URL missing. Available photos:`, photos, "Found photo object:", foundPhoto);
-                    }
-                  } else if (content.url) { // Direct URL fallback from contentData
-                    photoSrc = content.url;
-                    photoAlt = content.name || `Photo ${obj.objectId}`;
-                  } else {
-                    console.warn(`Photo object ${obj.objectId} missing photoId/URL in contentData or photos list empty. Content:`, content, "Photos:", photos);
-                    photoAlt = `Photo data missing for ${obj.objectId}`;
-                  }
-
-                  if (!photoSrc) { // 最終的にphotoSrcが空ならエラー用プレースホルダー
-                    photoSrc = 'https://via.placeholder.com/100x100.png?text=Error';
-                    console.error('Final photoSrc is empty for object:', obj.objectId, 'Using placeholder.');
-                  }
-
+                  const photoSrc = content.url || 'https://via.placeholder.com/100?text=No+Image';
+                  const photoAlt = content.name || 'Album photo';
                   if (content.cropInfo && content.cropInfo.width && content.cropInfo.height) {
                     const { x, y, width: cropW, height: cropH } = content.cropInfo;
-                    // Calculate the scale of the original image within the cropped view
-                    // This assumes obj.width and obj.height are the dimensions of the *cropped* image on canvas
                     const scaleX = obj.width / cropW;
                     const scaleY = obj.height / cropH;
-
                     return (
                       <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
                         <img
@@ -1410,82 +1394,59 @@ const AlbumEdit: React.FC = () => {
                             position: 'absolute',
                             left: `-${x * scaleX}px`,
                             top: `-${y * scaleY}px`,
-                            width: `${content.originalWidth * scaleX}px`, // originalWidth of the image before crop
-                            height: `${content.originalHeight * scaleY}px`, // originalHeight of the image before crop
+                            width: `${content.originalWidth * scaleX}px`,
+                            height: `${content.originalHeight * scaleY}px`,
                             maxWidth: 'none',
                             maxHeight: 'none',
                             objectFit: 'none',
                           }}
+                          draggable={false}
                         />
                       </div>
                     );
                   }
-                  return <img src={photoSrc} alt={photoAlt} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
-
+                  return (
+                    <img
+                      src={photoSrc}
+                      alt={photoAlt}
+                      draggable={false}
+                    />
+                  );
                 case 'sticker':
-                  let stickerSrc = 'https://via.placeholder.com/50x50.png?text=StickerErr';
-                  let stickerAlt = 'Error loading sticker';
-                  // contentDataにimageUrlが直接保存されているか、またはstickerIdからstickersリストを検索
-                  if (content.imageUrl) {
-                    stickerSrc = content.imageUrl;
-                    stickerAlt = content.name || `Sticker ${obj.objectId}`;
-                  } else if (content.stickerId && stickers.length > 0) {
-                    const foundSticker = stickers.find(s => s.stickerId === content.stickerId);
-                    if (foundSticker) {
-                      stickerSrc = foundSticker.imageUrl;
-                      stickerAlt = foundSticker.name;
-                    } else {
-                      stickerAlt = `Sticker ID: ${content.stickerId} not found in local list`;
-                      console.warn(`Sticker with ID ${content.stickerId} not found in stickers list. Content:`, content, "Stickers:", stickers);
-                    }
-                  } else {
-                     console.warn(`Sticker object ${obj.objectId} missing stickerId/imageUrl or stickers list empty. Content:`, content, "Stickers:", stickers);
-                  }
-                  return <img src={stickerSrc} alt={stickerAlt} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
-
+                  return (
+                    <img
+                      src={content.imageUrl || 'https://via.placeholder.com/50?text=S'}
+                      alt={content.name || 'Sticker'}
+                      draggable={false}
+                    />
+                  );
                 case 'text':
-                  const style: React.CSSProperties = {
-                    fontFamily: content.font || 'Arial',
-                    fontSize: `${content.size || 16}px`,
-                    color: content.color || '#000000',
-                    fontWeight: content.bold ? 'bold' : 'normal',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textAlign: 'left',
-                    padding: '5px',
-                    boxSizing: 'border-box',
-                  };
-                  if (isTextEditing && currentTextObjectId === obj.objectId) {
-                    return (
-                      <textarea
-                        value={editingText}
-                        onChange={(e) => setEditingText(e.target.value)}
-                        onBlur={handleTextEditComplete}
-                        autoFocus
-                        style={{ ...style, width: '100%', height: '100%', border: '1px dashed #ccc', resize: 'none' }}
-                      />
-                    );
-                  }
-                  return <div style={style} onDoubleClick={() => handleTextObjectClick(obj)}>{content.text || ''}</div>;
+                    const textStyleFromContent: React.CSSProperties = {
+                        fontFamily: content.font || 'Inter',
+                        fontSize: `${content.size || 16}px`,
+                        color: content.color || '#212529',
+                        fontWeight: content.bold ? 'bold' : 'normal',
+                    };
+                    if (isTextEditing && currentTextObjectId === obj.objectId) {
+                      return (
+                        <textarea
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onBlur={handleTextEditComplete}
+                          autoFocus
+                          style={{ ...textStyleFromContent, width: '100%', height: '100%', border: '1px dashed var(--primary-color)', outline: 'none', resize: 'none', boxSizing: 'border-box', padding: 'var(--spacing-xs)' }}
+                        />
+                      );
+                    }
+                    return <div style={textStyleFromContent} className="text-content-wrapper" onDoubleClick={() => handleTextObjectClick(obj)}>{content.text || 'テキスト'}</div>;
 
                 case 'drawing':
-                  if (!content.pathData || typeof content.pathData !== 'string' || content.pathData.trim() === '') {
-                    console.error("Drawing object has invalid or empty pathData:", obj, content);
-                    return <div style={{width: '100%', height: '100%', border: '1px dashed red', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'red'}}>Drawing Path Error</div>;
-                  }
-                  // viewBox はオブジェクトの保存された幅と高さではなく、描画データ自体の元の幅と高さに基づくべき
-                  // ただし、現状では content.originalWidth/Height を描画オブジェクトに保存していないため、obj.width/height を使う
-                  // より正確には、SVGパスのバウンディングボックスを計算するか、保存時に元のサイズを記録する必要がある
+                    const originalWidth = content.originalWidth || obj.width;
+                    const originalHeight = content.originalHeight || obj.height;
                   return (
-                    <svg width="100%" height="100%" viewBox={`0 0 ${content.originalWidth || obj.width} ${content.originalHeight || obj.height}`}
-                         preserveAspectRatio="xMidYMid meet" style={{ overflow: 'visible' }}>
+                    <svg className="drawing-svg" viewBox={`0 0 ${originalWidth} ${originalHeight}`}>
                       <path
-                        d={content.pathData} // pathDataは、(0,0)を基準とした相対パスであるべき
+                        d={content.pathData || ''}
                         stroke={content.color || '#000000'}
                         strokeWidth={content.thickness || 2}
                         fill="none"
@@ -1495,73 +1456,67 @@ const AlbumEdit: React.FC = () => {
                     </svg>
                   );
                 default:
-                  console.warn('Unknown object type:', obj.type, obj);
-                  return <div>Unsupported object: {obj.type}</div>;
+                  return null;
               }
             };
 
-            return (
-              <div
-                key={obj.objectId}
-                className={`album-object ${obj.type}-object ${isSelected ? 'selected' : ''}`}
-                style={commonStyle}
-                onMouseDown={(e) => handleObjectMouseDown(e, obj)}
-                onDoubleClick={obj.type === 'text' ? () => handleTextObjectClick(obj) : undefined}
-              >
-                {renderContent()}
-                {isSelected && ( // Show handles only if selected
-                  <>
-                    {/* Resize Handles and Delete Button (shown when not rotating and not resizing) */}
-                    {!isRotatingObject && !isResizingObject && (
-                      <>
-                        {['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].map(handle => (
-                          <div
-                            key={handle}
-                            className={`resize-handle ${handle}`}
-                            onMouseDown={(e) => handleObjectResizeMouseDown(e, handle)}
-                          />
-                        ))}
+              return (
+                <div
+                  key={obj.objectId}
+                  className={`album-object ${selectedObject?.objectId === obj.objectId ? 'selected' : ''}`}
+                  style={style}
+                  onMouseDown={(e) => handleObjectMouseDown(e, obj)}
+                  onDoubleClick={obj.type === 'text' && !isTextEditing ? () => handleTextObjectClick(obj) : undefined}
+                >
+                  {renderContent()}
+                  {selectedObject?.objectId === obj.objectId && !isTextEditing && (
+                    <>
+                      {['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].map(handle => (
+                        <div
+                          key={handle}
+                          className={`resize-handle ${handle}`}
+                          onMouseDown={(e) => handleObjectResizeMouseDown(e, handle)}
+                        />
+                      ))}
+                      <button
+                        className="control-handle delete-object-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteObject();
+                        }}
+                        aria-label="Delete object"
+                      />
+                      <div
+                        className="control-handle rotate-handle"
+                        onMouseDown={handleObjectRotationMouseDown}
+                        aria-label="Rotate object"
+                      />
+                       {selectedObject.type === 'photo' && (
                         <button
-                          className="delete-object-button"
-                          onClick={handleDeleteObject}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCropButtonClick();
+                          }}
+                          className="button"
+                          style={{ position: 'absolute', top: -35, left: -35, zIndex: 12, padding: 'var(--spacing-xs)', width: 'auto', height: 'auto', minWidth: 'auto' }}
+                          aria-label="Crop photo"
                         >
-                          X
+                          Crop
                         </button>
-                      </>
-                    )}
-                    {/* Rotation Handle (shown when not resizing) */}
-                    {!isResizingObject && (
-                       <div
-                           className="rotate-handle"
-                           onMouseDown={(e) => handleObjectRotationMouseDown(e)}
-                       >
-                           ↻
-                       </div>
-                    )}
-                  </>
-                )}
-                {isSelected && cropMode === 'shape' && obj.type === 'photo' && (
-                    <div className="crop-overlay-shape">
-                        {cropShape && (
-                            <div
-                                className="crop-rectangle"
-                                style={{
-                                    position: 'absolute',
-                                    left: `${cropShape.x}px`, top: `${cropShape.y}px`,
-                                    width: `${cropShape.width}px`, height: `${cropShape.height}px`,
-                                    border: '2px dashed yellow', boxSizing: 'border-box', cursor: 'move',
-                                }}
-                            >
-                                {/* Future: Add handles to resize cropShape itself */}
-                            </div>
-                        )}
-                        <p style={{ color: 'white', background: 'rgba(0,0,0,0.5)', padding: '5px', zIndex: 1 }}>図形切り取り</p>
-                    </div>
-                )}
-              </div>
-            );
-          })}
-            {/* Live drawing preview - ensure it's relative to the page representation if drawing is page-bound */}
+                      )}
+                    </>
+                  )}
+                  {selectedObject?.objectId === obj.objectId && cropMode === 'shape' && cropShape && obj.type === 'photo' && (
+                    <div className="crop-overlay-shape" style={{
+                      top: `${cropShape.y}px`,
+                      left: `${cropShape.x}px`,
+                      width: `${cropShape.width}px`,
+                      height: `${cropShape.height}px`,
+                    }}/>
+                  )}
+                </div>
+              );
+            })}
             {isDrawing && currentPath && (
               <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
                 <path
@@ -1575,50 +1530,69 @@ const AlbumEdit: React.FC = () => {
               </svg>
             )}
           </div>
+          {cropMode && selectedObject && selectedObject.type === 'photo' && (
+            <button onClick={handleConfirmCrop} className="button button-primary crop-confirm-button">
+              切り取り確定
+            </button>
+          )}
         </div>
+
         <aside className="album-edit-sidebar">
           <div className="sidebar-tabs">
-            <button className={activeTab === 'photos' ? 'active' : ''} onClick={() => handleTabChange('photos')}>写真</button>
-            <button className={activeTab === 'stickers' ? 'active' : ''} onClick={() => handleTabChange('stickers')}>ステッカー</button>
+            <button
+              className={activeTab === 'photos' ? 'active' : ''}
+              onClick={() => handleTabChange('photos')}
+            >
+              写真
+            </button>
+            <button
+              className={activeTab === 'stickers' ? 'active' : ''}
+              onClick={() => handleTabChange('stickers')}
+            >
+              ステッカー
+            </button>
           </div>
-          <div className="sidebar-content">
+          <div
+            className="sidebar-content"
+            onDragOver={handlePhotoUploadDragOver}
+            onDrop={activeTab === 'photos' ? handlePhotoUploadDrop : undefined}
+          >
             {activeTab === 'photos' && (
-              <div
-                className="sidebar-content photos-content"
-                onDragOver={handlePhotoUploadDragOver}
-                onDrop={handlePhotoUploadDrop}
-              >
-                <p>アップロード済み写真:</p>
-                {photos.map(photo => (
-                  <div
-                    key={photo.photoId} // photo.id を photo.photoId に変更
-                    className="sidebar-item sidebar-photo-item"
-                    draggable="true"
-                    onDragStart={(e) => handleItemDragStart(e, photo, 'photo')}
-                    style={{ cursor: 'grab', marginBottom: '5px', border: '1px solid #eee', padding: '5px', display: 'flex', alignItems: 'center' }}
-                  >
-                    <img src={photo.url} alt={photo.name} style={{ width: '50px', height: '50px', marginRight: '10px', objectFit: 'cover' }} />
-                    <span>{photo.name}</span>
-                  </div>
-                ))}
+              <div>
+                <h4>写真リスト</h4>
+                <p className="sidebar-upload-instruction">ここに写真をドラッグ＆ドロップしてアップロードできます。</p>
+                <div className="sidebar-item-list">
+                    {photos.map(photo => (
+                    <div
+                        key={photo.photoId}
+                        className="sidebar-item"
+                        draggable
+                        onDragStart={(e) => handleItemDragStart(e, photo, 'photo')}
+                        title={photo.name}
+                    >
+                        <img src={photo.url} alt={photo.name} />
+                    </div>
+                    ))}
+                </div>
               </div>
             )}
             {activeTab === 'stickers' && (
-              <>
-                <p>ステッカー:</p>
-                {stickers.map(sticker => (
-                  <div
-                    key={sticker.stickerId} // sticker.id を sticker.stickerId に変更
-                    className="sidebar-item sidebar-sticker-item"
-                    draggable="true"
-                    onDragStart={(e) => handleItemDragStart(e, sticker, 'sticker')}
-                    style={{ cursor: 'grab', marginBottom: '5px', border: '1px solid #eee', padding: '5px', display: 'flex', alignItems: 'center' }}
-                  >
-                    <img src={sticker.imageUrl} alt={sticker.name} style={{ width: '40px', height: '40px', marginRight: '10px', objectFit: 'contain' }} />
-                    <span>{sticker.name}</span>
-                  </div>
-                ))}
-              </>
+              <div>
+                <h4>ステッカーリスト</h4>
+                <div className="sidebar-item-list">
+                    {stickers.map(sticker => (
+                    <div
+                        key={sticker.stickerId}
+                        className="sidebar-item"
+                        draggable
+                        onDragStart={(e) => handleItemDragStart(e, sticker, 'sticker')}
+                        title={sticker.name}
+                    >
+                        <img src={sticker.imageUrl} alt={sticker.name} />
+                    </div>
+                    ))}
+                </div>
+              </div>
             )}
           </div>
         </aside>
