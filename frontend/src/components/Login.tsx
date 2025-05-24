@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // useNavigateをインポート
+import './Login.css'; // CSSファイルをインポート
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -14,7 +15,8 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/auth/login', { // APIエンドポイント
+      // APIエンドポイントを環境変数から取得するか、setupProxy.js経由で相対パスにする
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -26,9 +28,9 @@ const Login: React.FC = () => {
         const errorData = await response.json();
         // 401 Unauthorizedの場合のメッセージを具体的にする
         if (response.status === 401) {
-            throw new Error(errorData.message || 'Incorrect username or password.');
+            throw new Error(errorData.message || 'ユーザー名またはパスワードが正しくありません。');
         }
-        throw new Error(errorData.message || 'Login failed');
+        throw new Error(errorData.message || 'ログインに失敗しました。');
       }
 
       const data = await response.json();
@@ -39,7 +41,7 @@ const Login: React.FC = () => {
       navigate('/albums'); // ログイン成功後にアルバム一覧へ遷移
 
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || 'ログインに失敗しました。もう一度お試しください。');
       console.error('Login error:', err);
     } finally {
       setLoading(false);
@@ -51,41 +53,48 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div>
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="login-username">Username:</label>
+    <div className="login-container">
+      <form onSubmit={handleSubmit} className="login-form">
+        <h2 className="login-title">ログイン</h2>
+        <div className="form-group">
+          <label htmlFor="login-username" className="form-label">ユーザー名:</label>
           <input
             type="text"
             id="login-username" // IDをRegisterと区別
+            className="form-control"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            placeholder="ユーザー名を入力"
           />
         </div>
-        <div>
-          <label htmlFor="login-password">Password:</label>
+        <div className="form-group">
+          <label htmlFor="login-password" className="form-label">パスワード:</label>
           <input
             type="password"
             id="login-password" // IDをRegisterと区別
+            className="form-control"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            placeholder="パスワードを入力"
           />
         </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
+        {error && <p className="error-message">{error}</p>}
+        <div className="login-button-container">
+          <button type="submit" className="button button-primary" disabled={loading}>
+            {loading ? 'ログイン中...' : 'ログイン'}
+          </button>
+          <button
+            type="button"
+            className="button button-secondary" // 汎用ボタンスタイルを適用
+            onClick={handleRegisterClick}
+            disabled={loading}
+          >
+            新規登録はこちら
+          </button>
+        </div>
       </form>
-      <button
-        type="button"
-        style={{ marginTop: '10px' }}
-        onClick={handleRegisterClick} // onClickイベントハンドラを追加
-      >
-        ユーザ登録はこちら
-      </button>
     </div>
   );
 };

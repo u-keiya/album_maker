@@ -1,0 +1,67 @@
+.register-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh; /* フッターなどを考慮して調整 */
+  padding: var(--spacing-lg);
+}
+
+.register-form {
+  width: 100%;
+  max-width: 400px; /* フォームの最大幅を設定 */
+  padding: var(--spacing-lg);
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem; /* 6px */
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
+}
+
+.register-title {
+  font-size: 1.75rem; /* 28px */
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+  color: var(--dark-gray);
+}
+
+.register-form .form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.register-form .form-label {
+  font-weight: 500;
+}
+
+.register-button-container {
+  margin-top: var(--spacing-lg);
+  display: flex;
+  flex-direction: column; /* ボタンを縦に並べる場合 */
+  gap: var(--spacing-sm); /* ボタン間のスペース */
+}
+
+.register-button-container .button {
+  width: 100%; /* ボタン幅をコンテナに合わせる */
+}
+
+.register-form .error-message {
+  color: var(--danger-color);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-sm);
+  text-align: center;
+}
+
+.register-login-link {
+  text-align: center;
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-sm);
+}
+
+.register-login-link a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.register-login-link a:hover {
+  text-decoration: underline;
+}
