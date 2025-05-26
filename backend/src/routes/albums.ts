@@ -7,7 +7,11 @@ import { User } from '../entities/User'; // Assuming User entity exists and is p
 import { authenticateToken } from '../middleware/authMiddleware'; // Corrected path if needed, assuming it's correct now
 import { EntityManager } from 'typeorm';
 import { getBlobUrlWithSas } from '../utils/azureStorage'; // Import the SAS helper
+import { validate as isUUID } from 'uuid';
+import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
+import { Readable } from 'stream';
 import { BlobServiceClient, ContainerClient } from '@azure/storage-blob'; // For ContainerClient
+import { Sticker } from '../entities/Sticker';
 import { Photo } from '../entities/Photo'; // To fetch photo details for SAS
 // Removed asyncHandler import
 
@@ -230,6 +234,185 @@ router.post('/:albumId/objects', authenticateToken, async (req: Request, res: Re
     const { pageId, type, positionX, positionY, width, height, rotation, zIndex, contentData } = req.body;
     const userId = req.user?.userId;
 
+// アルバムダウンロード
+router.get('/:albumId/download', authenticateToken, async (req: Request, res: Response) => {
+  const { albumId } = req.params;
+  const userId = (req as any).user.userId;
+
+  // Validate albumId
+  if (!isUUID(albumId)) {
+    return res.status(400).json({ error: 'InvalidInput', message: 'Invalid album ID format.' });
+  }
+
+  try {
+    const albumRepository = AppDataSource.getRepository(Album);
+    const album = await albumRepository.findOne({ where: { album_id: albumId, user: { user_id: userId } }, relations: ['pages', 'pages.albumObjects', 'pages.albumObjects.photo'] });
+
+    if (!album) {
+      return res.status(404).json({ error: 'NotFound', message: 'Album not found or access denied.' });
+    }
+
+    // PDF生成処理 (ダミー)
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage();
+    const { width, height } = page.getSize();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    page.drawText(`Album Title: ${album.title}`, {
+      x: 50,
+      y: height - 4 * 50,
+      size: 30,
+      font: font,
+      color: rgb(0, 0.53, 0.71),
+    });
+
+    // 各ページのオブジェクトを描画 (簡略版)
+    const sortedPages: AlbumPage[] = album.pages.sort((a: AlbumPage, b: AlbumPage) => a.page_number - b.page_number);
+    for (const albumPage of sortedPages) {
+        page.drawText(`Page ${albumPage.page_number}`, {
+            x: 50,
+            y: height - 4 * 50 - (albumPage.page_number * 50), // 仮のオフセット
+            size: 20,
+            font: font,
+            color: rgb(0,0,0)
+        });
+
+        if ((albumPage as any).albumObjects) {
+          for (const obj of (albumPage as any).albumObjects) {
+            let contentData;
+            try {
+                contentData = typeof obj.content_data === 'string' ? JSON.parse(obj.content_data) : obj.content_data;
+            } catch (e) {
+                console.error(`Error parsing content_data for object ${obj.object_id} in PDF generation:`, e);
+                continue; // Skip this object if content_data is invalid
+            }
+
+            if (obj.type === 'photo' && contentData.photoId && containerClient) {
+              try {
+                const photoRepository = AppDataSource.getRepository(Photo);
+                const photoEntity = await photoRepository.findOneBy({ photo_id: contentData.photoId });
+                if (photoEntity && photoEntity.file_path) {
+                  const blobName = photoEntity.file_path.substring(photoEntity.file_path.lastIndexOf('/') + 1);
+                  const blobClient = containerClient.getBlobClient(blobName);
+                  const downloadBlockBlobResponse = await blobClient.downloadToBuffer();
+                  let imageBytes = downloadBlockBlobResponse;
+                  let image;
+                  if (photoEntity.mime_type === 'image/png') {
+                    image = await pdfDoc.embedPng(imageBytes);
+                  } else if (photoEntity.mime_type === 'image/jpeg' || photoEntity.mime_type === 'image/jpg') {
+                    image = await pdfDoc.embedJpg(imageBytes);
+                  } else {
+                    console.warn(`Unsupported image type ${photoEntity.mime_type} for photo ${photoEntity.photo_id} in PDF generation.`);
+                    continue;
+                  }
+                  const { width: imgWidth, height: imgHeight } = image.scale(1);
+                  page.drawImage(image, {
+                    x: obj.position_x,
+                    y: height - obj.position_y - obj.height, // pdf-libのY座標は左下からなので調整
+                    width: obj.width,
+                    height: obj.height,
+                    rotate: degrees(obj.rotation || 0),
+                  });
+                }
+              } catch (e) {
+                console.error(`Error embedding photo ${contentData.photoId} in PDF:`, e);
+              }
+            } else if (obj.type === 'sticker' && contentData.stickerId && containerClient) {
+              try {
+                const stickerRepository = AppDataSource.getRepository(Sticker); // Stickerエンティティをインポートする必要あり
+                const stickerEntity = await stickerRepository.findOneBy({ sticker_id: contentData.stickerId });
+                if (stickerEntity && stickerEntity.file_path) {
+                  // file_pathが完全なURLか、blob名のみかによって処理を調整
+                  let blobName = stickerEntity.file_path;
+                  if (stickerEntity.file_path.includes('/')) {
+                     blobName = stickerEntity.file_path.substring(stickerEntity.file_path.lastIndexOf('/') + 1);
+                  }
+                  const blobClient = containerClient.getBlobClient(blobName);
+                  const downloadBlockBlobResponse = await blobClient.downloadToBuffer();
+                  let imageBytes = downloadBlockBlobResponse;
+                  // ステッカーはPNG形式を想定（必要に応じてMIMEタイプをStickerエンティティに追加）
+                  const image = await pdfDoc.embedPng(imageBytes);
+                  const { width: imgWidth, height: imgHeight } = image.scale(1);
+                  page.drawImage(image, {
+                    x: obj.position_x,
+                    y: height - obj.position_y - obj.height,
+                    width: obj.width,
+                    height: obj.height,
+                    rotate: degrees(obj.rotation || 0),
+                  });
+                }
+              } catch (e) {
+                console.error(`Error embedding sticker ${contentData.stickerId} in PDF:`, e);
+              }
+            } else if (obj.type === 'text' && contentData.text) {
+              try {
+                const textFont = await pdfDoc.embedFont(contentData.font || StandardFonts.Helvetica);
+                let textColor = rgb(0, 0, 0); // Default black
+                if (contentData.color) {
+                  // Assuming color is hex #RRGGBB
+                  const r = parseInt(contentData.color.slice(1, 3), 16) / 255;
+                  const g = parseInt(contentData.color.slice(3, 5), 16) / 255;
+                  const b = parseInt(contentData.color.slice(5, 7), 16) / 255;
+                  textColor = rgb(r, g, b);
+                }
+                // pdf-lib doesn't directly support 'bold' in drawText options for standard fonts in a simple way.
+                // For bold, a bold version of the font would typically be embedded (e.g., Helvetica-Bold).
+                // Here, we'll use the regular font. If bold is critical, font embedding strategy needs to be enhanced.
+
+                page.drawText(contentData.text, {
+                  x: obj.position_x,
+                  y: height - obj.position_y - obj.height, // Adjust Y for text baseline if needed
+                  font: textFont,
+                  size: contentData.size || 12,
+                  color: textColor,
+                  // lineHeight, rotate, etc. can be added if needed and supported
+                });
+              } catch (e) {
+                console.error(`Error drawing text object ${obj.object_id} in PDF:`, e);
+              }
+            } else if (obj.type === 'drawing' && contentData.pathData) {
+              try {
+                let pathColor = rgb(0, 0, 0); // Default black
+                if (contentData.color) {
+                  const r = parseInt(contentData.color.slice(1, 3), 16) / 255;
+                  const g = parseInt(contentData.color.slice(3, 5), 16) / 255;
+                  const b = parseInt(contentData.color.slice(5, 7), 16) / 255;
+                  pathColor = rgb(r, g, b);
+                }
+                // drawSvgPath positions relative to the current page origin (bottom-left).
+                // The pathData itself might have its own coordinate system.
+                // For simplicity, we assume pathData is defined relative to the object's (0,0)
+                // and we translate the page's coordinate system temporarily.
+                // However, pdf-lib's drawSvgPath takes x, y options for positioning the path.
+                page.drawSvgPath(contentData.pathData, {
+                  x: obj.position_x,
+                  y: height - obj.position_y - obj.height, // Adjust Y to match top-left origin of objects
+                  borderColor: pathColor, // Use borderColor for the path stroke
+                  borderWidth: contentData.thickness || 1,
+                  // color: pathColor, // 'color' is for fill, 'borderColor' for stroke
+                });
+              } catch (e) {
+                console.error(`Error drawing drawing object ${obj.object_id} in PDF:`, e);
+              }
+            }
+          }
+        }
+    }
+
+    const pdfBytes = await pdfDoc.save();
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="album_${albumId}.pdf"`);
+    
+    const stream = new Readable();
+    stream.push(pdfBytes);
+    stream.push(null); // ストリームの終了
+    stream.pipe(res);
+
+  } catch (error) {
+    console.error('Error generating PDF for album download:', error);
+    res.status(500).json({ error: 'ServerError', message: 'Failed to generate PDF for album.' });
+  }
+});
     if (!userId) {
         return res.status(401).json({ error: 'Unauthorized', message: 'User ID not found in token.' });
     }
