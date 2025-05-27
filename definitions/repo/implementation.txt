@@ -38,3 +38,10 @@ Short Description: リクエストボディの contentData 内に含まれる ph
 Input / Output:
   Input: req: Request (params: { albumId: string }, body: { pageId: string, type: string, ..., contentData: { photoId?: string } }), res: Response
   Output: Response (JSON or error)
+
+File: backend/src/routes/albums.ts
+Function: GET /albums/:albumId/download (router.get('/:albumId/download', ...))
+Short Description: 指定されたアルバムIDのアルバムをPDF形式でダウンロードするAPIエンドポイントを実装しました。写真、ステッカー、テキスト、描画オブジェクトの描画に対応しています。
+Input / Output:
+  Input: req: Request (params: { albumId: string }), res: Response
+  Output: Response (PDF file stream or error)
